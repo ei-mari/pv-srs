@@ -118,8 +118,6 @@
     /* Study */
     .actions{ display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
     .meta{ font-size: 13px; color: var(--muted); margin-top: 10px; }
-    .ratings{ display:flex; gap:10px; flex-wrap:wrap; margin-top:12px; }
-    .ratings .btn{ min-width: 120px; box-shadow:none; }
 
     /* Card tap area */
     .tapCard{
@@ -150,6 +148,34 @@
       font-size: 12px;
       color: var(--muted);
       margin-top: 10px;
+    }
+
+    /* Ratings + next timing */
+    .ratings{
+      display:grid;
+      grid-template-columns: 1fr 1fr;
+      gap:10px;
+      margin-top:12px;
+    }
+    @media (max-width:520px){
+      .ratings{ grid-template-columns: 1fr; }
+    }
+    .rateBox{
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 10px;
+      background: rgba(17,17,17,.02);
+    }
+    .rateBox .btn{
+      width: 100%;
+      justify-content:center;
+      box-shadow:none;
+    }
+    .nextHint{
+      margin-top: 8px;
+      font-size: 12px;
+      color: var(--muted);
+      text-align:center;
     }
 
     /* Settings bottom sheet */
@@ -202,6 +228,18 @@
       padding: 10px;
       border-radius: 14px;
     }
+    .checkRow{
+      display:flex;
+      gap:10px;
+      align-items:flex-start;
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: rgba(17,17,17,.02);
+    }
+    .checkRow input{ margin-top: 2px; }
+    .checkText{ font-size: 14px; }
+    .checkDesc{ font-size: 12px; color: var(--muted); margin-top: 4px; }
 
     /* Bottom nav */
     .bottomNav{
@@ -225,7 +263,7 @@
       background: #fff;
       border-radius: 14px;
       padding: 12px 10px;
-      font-weight: 700;
+      font-weight: 800;
       cursor:pointer;
       box-shadow: 0 6px 18px rgba(0,0,0,.06);
     }
@@ -295,10 +333,22 @@
           </div>
 
           <div class="ratings" id="ratings" style="display:none;">
-            <button class="btn" id="againBtn">Again</button>
-            <button class="btn secondary" id="hardBtn">Hard</button>
-            <button class="btn secondary" id="goodBtn">Good</button>
-            <button class="btn secondary" id="easyBtn">Easy</button>
+            <div class="rateBox">
+              <button class="btn" id="againBtn">Again</button>
+              <div class="nextHint" id="againHint">—</div>
+            </div>
+            <div class="rateBox">
+              <button class="btn secondary" id="hardBtn">Hard</button>
+              <div class="nextHint" id="hardHint">—</div>
+            </div>
+            <div class="rateBox">
+              <button class="btn secondary" id="goodBtn">Good</button>
+              <div class="nextHint" id="goodHint">—</div>
+            </div>
+            <div class="rateBox">
+              <button class="btn secondary" id="easyBtn">Easy</button>
+              <div class="nextHint" id="easyHint">—</div>
+            </div>
           </div>
 
           <div class="meta" id="meta"></div>
@@ -318,6 +368,15 @@
     </div>
     <div class="sheetBody">
       <div class="secTitle">Learning</div>
+
+      <div class="checkRow" style="margin-bottom:10px;">
+        <input type="checkbox" id="autoPlayToggle">
+        <div>
+          <div class="checkText"><b>裏を開いた瞬間に音声を自動再生</b></div>
+          <div class="checkDesc">カードをタップして裏を表示した瞬間に、音声（audioUrl）を再生します。</div>
+        </div>
+      </div>
+
       <div class="row2">
         <div>
           <div class="pill" style="display:inline-block;margin-bottom:8px;">New/日</div>
@@ -369,10 +428,10 @@
   <script>
     // ===== 設定 =====
     const CSV_URL = "./cards.csv";
-    const LS_PROGRESS_KEY = "pv_srs_sm2_v5_progress";
-    const LS_SETTINGS_KEY = "pv_srs_sm2_v5_settings";
+    const LS_PROGRESS_KEY = "pv_srs_sm2_v6_progress";
+    const LS_SETTINGS_KEY = "pv_srs_sm2_v6_settings";
 
-    const defaultSettings = { newPerDay: 10, unit: "all" };
+    const defaultSettings = { newPerDay: 10, unit: "all", autoPlayOnFlip: true };
 
     function loadSettings() {
       try {
@@ -417,6 +476,22 @@
     function setFilterInfo() {
       const u = settings.unit === "all" ? "All" : `UNIT ${String(Number(settings.unit)).padStart(3,"0")}`;
       document.getElementById("filterInfo").textContent = `${u} • New/日: ${settings.newPerDay}`;
+    }
+    function formatNext(deltaDays, dueDate){
+      if (deltaDays === 0) return "今日";
+      if (deltaDays === 1) return "明日";
+      if (deltaDays <= 30) return `${deltaDays}日後`;
+      return dueDate; // 長い場合は日付
+    }
+    function safePlayFromUrl(url){
+      try{
+        audio.pause();
+        audio.currentTime = 0;
+      } catch {}
+      audio.src = url;
+      audio.preload = "auto";
+      // awaitしない（タップの同期中に呼ぶほうがiPhoneで安定）
+      audio.play().catch(()=>{});
     }
 
     // ===== SM-2 =====
@@ -480,6 +555,11 @@
     const goodBtn = document.getElementById("goodBtn");
     const easyBtn = document.getElementById("easyBtn");
 
+    const againHint = document.getElementById("againHint");
+    const hardHint = document.getElementById("hardHint");
+    const goodHint = document.getElementById("goodHint");
+    const easyHint = document.getElementById("easyHint");
+
     // bottom nav
     const navListBtn = document.getElementById("navList");
     const navTodayBtn = document.getElementById("navToday");
@@ -490,6 +570,7 @@
     const sheetEl = document.getElementById("sheet");
     const closeSheetBtn = document.getElementById("closeSheetBtn");
 
+    const autoPlayToggle = document.getElementById("autoPlayToggle");
     const newPerDayInputEl = document.getElementById("newPerDayInput");
     const unitFilterEl = document.getElementById("unitFilter");
     const reloadBtn = document.getElementById("reloadBtn");
@@ -665,6 +746,31 @@
       easyBtn.disabled = !enabled;
     }
 
+    function updateRatingHints(){
+      // まだ裏を出してないなら、表示を薄くしておく（でも値は更新）
+      if (!current) {
+        againHint.textContent = hardHint.textContent = goodHint.textContent = easyHint.textContent = "—";
+        return;
+      }
+      const st = progress[current.id];
+      const introduced = !!st?.introducedOn;
+      if (!introduced){
+        againHint.textContent = hardHint.textContent = goodHint.textContent = easyHint.textContent = "学習に追加後";
+        return;
+      }
+
+      // 仮計算（SM-2）→ intervalDays から表示
+      const a = sm2Update({ ...st }, 1);
+      const h = sm2Update({ ...st }, 3);
+      const g = sm2Update({ ...st }, 4);
+      const e = sm2Update({ ...st }, 5);
+
+      againHint.textContent = `→ ${formatNext(a.intervalDays, a.dueDate)}`;
+      hardHint.textContent  = `→ ${formatNext(h.intervalDays, h.dueDate)}`;
+      goodHint.textContent  = `→ ${formatNext(g.intervalDays, g.dueDate)}`;
+      easyHint.textContent  = `→ ${formatNext(e.intervalDays, e.dueDate)}`;
+    }
+
     function renderCard(card){
       current=card;
       revealed=false;
@@ -679,6 +785,7 @@
         playBtn.disabled=true;
         addToLearningBtn.style.display="none";
         setGradeEnabled(false);
+        updateRatingHints();
         return;
       }
 
@@ -699,29 +806,38 @@
       detailsEl.textContent = introduced
         ? `due: ${st.dueDate} | interval: ${st.intervalDays}d | ease: ${Number(st.ease).toFixed(2)} | reps: ${st.reps} | lapses: ${st.lapses}`
         : `未導入のため採点できません（New枠があれば「学習に追加」できます）`;
+
+      updateRatingHints();
     }
 
     function flipCard(){
       if (!current) return;
       const showing = answerEl.style.display !== "none";
+
       if (showing){
         answerEl.style.display="none";
         ratingsEl.style.display="none";
+        revealed=false;
       } else {
         answerEl.style.display="block";
-        // 導入済みのみ採点ボタンを表示
+        revealed=true;
+
         const introduced = !!progress[current.id]?.introducedOn;
-        ratingsEl.style.display = introduced ? "flex" : "none";
+        ratingsEl.style.display = introduced ? "grid" : "none";
+
+        // 裏を開いた瞬間に自動再生（設定ON + 音声あり）
+        if (settings.autoPlayOnFlip && current.audioUrl) {
+          safePlayFromUrl(current.audioUrl);
+        }
       }
-      revealed = !showing;
+
+      updateRatingHints();
     }
 
     async function playCurrentAudio(){
       if (!current?.audioUrl) return;
       try{
-        audio.src=current.audioUrl;
-        audio.preload="auto";
-        await audio.play();
+        safePlayFromUrl(current.audioUrl);
       }catch{
         alert("再生できませんでした。もう一度タップしてください。");
       }
@@ -745,10 +861,6 @@
       const next = pickNextDueCard(scope);
       if (next){
         renderCard(next);
-        // 次のカードは表面から
-        answerEl.style.display="none";
-        ratingsEl.style.display="none";
-        revealed=false;
       } else {
         goList();
       }
@@ -780,7 +892,6 @@
 
       if (h === "#today"){
         setActiveNav("today");
-        // 今日の学習：期限カードへ（なければ新規1枚導入）
         const scope=getFilteredCards();
         let next = pickNextDueCard(scope);
         if (!next){
@@ -801,7 +912,6 @@
         return;
       }
 
-      // fallback
       goToday();
     }
 
@@ -816,7 +926,6 @@
       overlayEl.style.display="none";
       sheetEl.classList.remove("open");
       document.body.style.overflow="";
-      // 戻り先は現在のhashに合わせる
       const h = location.hash || "#today";
       setActiveNav(h==="#list" ? "list" : "today");
     }
@@ -845,6 +954,7 @@
       buildUnitFilter();
       unitFilterEl.value = settings.unit;
       newPerDayInputEl.value = settings.newPerDay;
+      autoPlayToggle.checked = !!settings.autoPlayOnFlip;
 
       // 初回起動時に今日の学習が開始できるように枠ぶん導入
       introduceNewCardsAuto(9999, getFilteredCards());
@@ -863,10 +973,7 @@
     backBtn.addEventListener("click", goList);
 
     // card tap flip
-    tapCardEl.addEventListener("click", (e)=>{
-      // 音声ボタンは外にあるので干渉しない想定
-      flipCard();
-    });
+    tapCardEl.addEventListener("click", ()=>flipCard());
 
     playBtn.addEventListener("click", (e)=>{
       e.stopPropagation();
@@ -884,9 +991,8 @@
       introduceCard(current);
       renderStatus();
       renderCard(current);
-      // 裏を見ていたら採点を有効にするため表示更新
       if (revealed){
-        ratingsEl.style.display = "flex";
+        ratingsEl.style.display = "grid";
       }
       showToast("学習に追加");
     });
@@ -917,6 +1023,13 @@
     // settings fields
     newPerDayInputEl.value = settings.newPerDay;
     unitFilterEl.value = settings.unit;
+    autoPlayToggle.checked = !!settings.autoPlayOnFlip;
+
+    autoPlayToggle.addEventListener("change", ()=>{
+      settings.autoPlayOnFlip = !!autoPlayToggle.checked;
+      saveSettings(settings);
+      showToast(settings.autoPlayOnFlip ? "自動再生: ON" : "自動再生: OFF");
+    });
 
     newPerDayInputEl.addEventListener("change", ()=>{
       const v = Number(newPerDayInputEl.value);
@@ -943,7 +1056,7 @@
     });
 
     exportBtn.addEventListener("click", ()=>{
-      const payload = { version: 5, exportedAt: new Date().toISOString(), progress, settings };
+      const payload = { version: 6, exportedAt: new Date().toISOString(), progress, settings };
       downloadText("pv_srs_progress.json", JSON.stringify(payload, null, 2));
       showToast("Export完了");
     });
@@ -961,6 +1074,7 @@
           saveSettings(settings);
           newPerDayInputEl.value = settings.newPerDay;
           unitFilterEl.value = settings.unit;
+          autoPlayToggle.checked = !!settings.autoPlayOnFlip;
         }
         saveProgress();
         for (const c of cards) ensureStateForCard(c.id);
@@ -990,7 +1104,6 @@
     loadProgress();
     setFilterInfo();
 
-    // 初期表示は「今日」
     if (!location.hash) location.hash = "#today";
 
     loadCsv().catch(err=>{
@@ -999,6 +1112,7 @@
       setActiveNav("today");
       showStudyView();
       jaEl.textContent="cards.csv をリポジトリ直下に置いたか確認してください。";
+      updateRatingHints();
     });
   </script>
 </body>
