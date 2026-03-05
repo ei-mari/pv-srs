@@ -19,7 +19,7 @@
     .btn{ border:0; padding:10px 12px; border-radius:12px; background:#111; color:#fff; font-weight:900; cursor:pointer; }
     .btn.secondary{ background:rgba(17,17,17,.06); color:#111; }
     .btn:disabled{ opacity:.45; cursor:not-allowed; }
-    input, select{
+    select{
       padding:10px 12px; border-radius:12px; border:1px solid var(--line); background:#fff;
     }
     .panel{ background:var(--card); border-radius:var(--radius); box-shadow:var(--shadow); overflow:hidden; }
@@ -91,7 +91,6 @@
           <p class="ja" id="nowJa">—</p>
           <p class="en" id="nowEn">—</p>
           <p class="meta" id="nowMeta">—</p>
-          <p class="small" id="nowPlaying" style="margin-top:10px;">Now playing: —</p>
         </div>
       </div>
     </div>
@@ -121,7 +120,6 @@
     const nowJa = document.getElementById("nowJa");
     const nowEn = document.getElementById("nowEn");
     const nowMeta = document.getElementById("nowMeta");
-    const nowPlaying = document.getElementById("nowPlaying");
 
     const toast = document.getElementById("toast");
 
@@ -211,18 +209,16 @@
       let arr = base.slice();
 
       if (settings.shuffle){
-        // If keepCurrent, keep current track at head and shuffle the rest
         const currentId = keepCurrent && playlist[idx]?.id ? playlist[idx].id : null;
         if (currentId){
           const cur = arr.find(x => x.id === currentId);
           arr = arr.filter(x => x.id !== currentId);
-          // shuffle rest
           for (let i=arr.length-1; i>0; i--){
             const j = Math.floor(Math.random()*(i+1));
             [arr[i], arr[j]] = [arr[j], arr[i]];
           }
           if (cur) arr.unshift(cur);
-          idx = 0; // current is now first
+          idx = 0;
         } else {
           for (let i=arr.length-1; i>0; i--){
             const j = Math.floor(Math.random()*(i+1));
@@ -282,14 +278,12 @@
         nowJa.textContent = "—";
         nowEn.textContent = "—";
         nowMeta.textContent = "—";
-        nowPlaying.textContent = "Now playing: —";
         replayBtn.disabled = true;
         return;
       }
       nowJa.textContent = t.ja || "(no ja)";
       nowEn.textContent = t.en || "";
       nowMeta.textContent = `UNIT ${String(t.unit).padStart(3,"0")} • ${t.id}`;
-      nowPlaying.textContent = `Now playing: ${t.en || t.ja || t.id}`;
       replayBtn.disabled = false;
     }
 
@@ -406,22 +400,17 @@
       saveSettings();
       updateShuffleButton();
 
-      // running中なら「現在の曲を維持して残りをシャッフル」して続行
       const keep = (idx >= 0);
       buildPlaylist(keep);
 
-      if (keep){
-        // now playing の表示だけ更新（曲は継続）
-        setNow(idx);
-      } else {
-        setNow(-1);
-      }
+      if (keep) setNow(idx);
+      else setNow(-1);
+
       showToast(settings.shuffle ? "Shuffle ON" : "Shuffle OFF");
     }
 
     // events
     audio.addEventListener("ended", ()=>{
-      // ended -> wait gap -> next
       scheduleNextAfterGap();
     });
 
@@ -471,6 +460,7 @@
       buildPlaylist(false);
       setNow(-1);
       setButtonsIdle();
+      updateShuffleButton();
     }
 
     loadCsv().catch(err=>{
@@ -479,7 +469,6 @@
       nowJa.textContent="cards.csv が見つからないか、読み込めませんでした。";
       nowEn.textContent="";
       nowMeta.textContent="";
-      nowPlaying.textContent="Now playing: —";
       startBtn.disabled = true;
       pauseBtn.disabled = true;
       shuffleBtn.disabled = true;
