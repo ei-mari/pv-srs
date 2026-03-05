@@ -9,17 +9,53 @@
     .wrap { max-width: 720px; margin: 0 auto; padding: 16px; }
     .card { background:#fff; border-radius: 14px; padding: 16px; box-shadow: 0 6px 18px rgba(0,0,0,.06); }
     .row { display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
-    button { border:0; padding: 10px 12px; border-radius: 12px; background:#111; color:#fff; font-weight:600; }
+    button { border:0; padding: 10px 12px; border-radius: 12px; background:#111; color:#fff; font-weight:600; cursor:pointer; }
     button.secondary { background:#e9eaee; color:#111; }
-    button:disabled { opacity:.5; }
+    button:disabled { opacity:.5; cursor:not-allowed; }
     .ja { font-size: 20px; line-height: 1.4; margin: 8px 0 10px; }
     .en { font-size: 18px; line-height: 1.4; margin: 10px 0 4px; }
     .ipa { font-size: 14px; opacity:.7; margin: 0 0 10px; }
     .meta { font-size: 13px; opacity:.7; margin-top: 10px; }
-    select, input[type="file"] { padding: 10px; border-radius: 12px; border:1px solid #ddd; background:#fff; }
+    select, input[type="file"], input[type="search"], input[type="number"] { padding: 10px; border-radius: 12px; border:1px solid #ddd; background:#fff; }
     .topbar { display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-bottom: 12px; }
     .pill { font-size: 12px; background:#e9eaee; padding: 6px 10px; border-radius: 999px; }
+
+    /* List */
+    .list { display:flex; flex-direction:column; gap:10px; margin-top: 12px; }
+    .listItem {
+      width: 100%;
+      text-align:left;
+      background:#fff;
+      border:1px solid #eee;
+      border-radius: 14px;
+      padding: 12px;
+      box-shadow: 0 4px 14px rgba(0,0,0,.04);
+    }
+    .listItem .title { font-size: 16px; line-height: 1.35; margin-bottom: 8px; color:#111; }
+    .listItem .sub { font-size: 12px; opacity:.75; display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+    .badge { font-size: 11px; padding: 4px 8px; border-radius: 999px; background:#e9eaee; }
+    .badge.due { background:#111; color:#fff; }
+    .badge.later { background:#e9eaee; color:#111; }
+    .badge.locked { background:#ffe9a8; color:#111; }
+    .muted { opacity:.7; }
+    .divider { height: 1px; background:#eee; margin: 12px 0; }
     .ratings button { min-width: 120px; }
+
+    /* Swipe hint / toast */
+    .swipeHint { font-size: 12px; opacity:.65; margin-top: 10px; }
+    .toast {
+      position: fixed;
+      left: 50%;
+      transform: translateX(-50%);
+      bottom: 24px;
+      background: rgba(17,17,17,.92);
+      color: #fff;
+      padding: 10px 12px;
+      border-radius: 999px;
+      font-size: 13px;
+      z-index: 9999;
+      display:none;
+    }
   </style>
 </head>
 <body>
@@ -34,6 +70,15 @@
         </select>
       </label>
 
+      <label>
+        New/日:
+        <input id="newPerDayInput" type="number" min="0" max="200" style="width:90px">
+      </label>
+
+      <button class="secondary" id="goListBtn">一覧</button>
+      <button class="secondary" id="goDueBtn">期限へ</button>
+      <button class="secondary" id="fillNewBtn">今日の新規を追加</button>
+
       <button class="secondary" id="reloadBtn">CSV再読み込み</button>
       <button class="secondary" id="resetBtn">学習データをリセット</button>
 
@@ -44,37 +89,78 @@
       </label>
     </div>
 
-    <div class="card">
-      <div class="row">
-        <button id="playBtn">▶︎ 音声</button>
-        <button class="secondary" id="showBtn">答えを見る</button>
-      </div>
-
-      <div class="ja" id="jaText">—</div>
-
-      <div id="answer" style="display:none;">
-        <div class="en" id="enText">—</div>
-        <div class="ipa" id="ipaText"></div>
-
-        <div class="row ratings" style="margin-top:12px;">
-          <button id="againBtn">Again</button>
-          <button id="hardBtn">Hard</button>
-          <button id="goodBtn">Good</button>
-          <button id="easyBtn">Easy</button>
+    <div class="card" id="cardShell">
+      <!-- List View -->
+      <div id="listView">
+        <div class="row">
+          <input id="searchInput" type="search" placeholder="日本語 / 英語で検索" style="flex:1; min-width: 220px;">
+          <button class="secondary" id="clearSearchBtn">クリア</button>
         </div>
+
+        <div class="divider"></div>
+
+        <div class="muted" id="listHint">
+          日本語をタップすると学習画面へ。<br>
+          <span class="muted">Locked（未導入）のカードは、新規枠が残っていれば導入して開きます。</span>
+        </div>
+        <div class="list" id="list"></div>
       </div>
 
-      <div class="meta" id="meta">—</div>
+      <!-- Study View -->
+      <div id="studyView" style="display:none;">
+        <div class="row">
+          <button class="secondary" id="backBtn">← 一覧</button>
+          <button id="playBtn">▶︎ 音声</button>
+          <button class="secondary" id="showBtn">答えを見る</button>
+        </div>
+
+        <div class="ja" id="jaText">—</div>
+
+        <div id="answer" style="display:none;">
+          <div class="en" id="enText">—</div>
+          <div class="ipa" id="ipaText"></div>
+
+          <div class="row ratings" style="margin-top:12px;">
+            <button id="againBtn">Again</button>
+            <button id="hardBtn">Hard</button>
+            <button id="goodBtn">Good</button>
+            <button id="easyBtn">Easy</button>
+          </div>
+        </div>
+
+        <div class="meta" id="meta">—</div>
+        <div class="swipeHint">スワイプ：左＝Again / 右＝Good（※答え表示後に有効）</div>
+      </div>
     </div>
   </div>
 
-  <!-- CSVパース用（ビルド不要） -->
+  <div class="toast" id="toast"></div>
+
+  <!-- CSVパース用 -->
   <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
 
   <script>
     // ===== 設定 =====
-    const CSV_URL = "./cards.csv"; // リポジトリ直下に置いた cards.csv
-    const LS_KEY = "pv_srs_sm2_v1"; // 進捗保存キー
+    const CSV_URL = "./cards.csv";
+    const LS_PROGRESS_KEY = "pv_srs_sm2_v2_progress";
+    const LS_SETTINGS_KEY = "pv_srs_sm2_v2_settings";
+
+    const defaultSettings = {
+      newPerDay: 10, // 新規/日
+    };
+
+    function loadSettings() {
+      try {
+        const raw = localStorage.getItem(LS_SETTINGS_KEY);
+        return raw ? { ...defaultSettings, ...JSON.parse(raw) } : { ...defaultSettings };
+      } catch {
+        return { ...defaultSettings };
+      }
+    }
+    function saveSettings(s) {
+      localStorage.setItem(LS_SETTINGS_KEY, JSON.stringify(s));
+    }
+    let settings = loadSettings();
 
     // ===== 便利関数 =====
     function todayKey(d = new Date()) {
@@ -100,21 +186,25 @@
       a.remove();
       URL.revokeObjectURL(url);
     }
+    function showToast(msg) {
+      const t = document.getElementById("toast");
+      t.textContent = msg;
+      t.style.display = "block";
+      clearTimeout(showToast._timer);
+      showToast._timer = setTimeout(() => t.style.display = "none", 900);
+    }
 
     // ===== SM-2 =====
-    // quality: 0-5（ここではボタンを 1/3/4/5 にマップ）
     function sm2Update(state, quality) {
       let ease = state.ease ?? 2.5;
       let reps = state.reps ?? 0;
       let intervalDays = state.intervalDays ?? 0;
       let lapses = state.lapses ?? 0;
 
-      // ease更新（SM-2公式）
       ease = ease + (0.1 - (5 - quality) * (0.08 + (5 - quality) * 0.02));
       ease = clampMin(ease, 1.3);
 
       if (quality < 3) {
-        // 失敗：明日また
         reps = 0;
         lapses += 1;
         intervalDays = 1;
@@ -130,20 +220,29 @@
     }
 
     // ===== データ =====
-    let cards = []; // CSVから読み込む（内容）
-    let progress = {}; // localStorage（復習状態）
+    let cards = [];
+    let progress = {};      // { [id]: { ease,reps,intervalDays,lapses,dueDate,lastReviewedAt,introducedOn } }
     let current = null;
     let revealed = false;
     const audio = new Audio();
 
-    // ===== UI要素 =====
+    // ===== UI =====
     const statusEl = document.getElementById("status");
     const unitFilterEl = document.getElementById("unitFilter");
+    const newPerDayInputEl = document.getElementById("newPerDayInput");
+
+    const listViewEl = document.getElementById("listView");
+    const studyViewEl = document.getElementById("studyView");
+    const listEl = document.getElementById("list");
+    const searchInputEl = document.getElementById("searchInput");
+    const clearSearchBtn = document.getElementById("clearSearchBtn");
+
     const jaEl = document.getElementById("jaText");
     const enEl = document.getElementById("enText");
     const ipaEl = document.getElementById("ipaText");
     const metaEl = document.getElementById("meta");
     const answerEl = document.getElementById("answer");
+
     const playBtn = document.getElementById("playBtn");
     const showBtn = document.getElementById("showBtn");
 
@@ -152,96 +251,276 @@
     const goodBtn = document.getElementById("goodBtn");
     const easyBtn = document.getElementById("easyBtn");
 
+    const goListBtn = document.getElementById("goListBtn");
+    const goDueBtn = document.getElementById("goDueBtn");
+    const fillNewBtn = document.getElementById("fillNewBtn");
+
+    const backBtn = document.getElementById("backBtn");
     const reloadBtn = document.getElementById("reloadBtn");
     const resetBtn = document.getElementById("resetBtn");
     const exportBtn = document.getElementById("exportBtn");
     const importProgressEl = document.getElementById("importProgress");
 
+    // ===== 画面遷移 =====
+    function goList() { location.hash = "#list"; }
+    function goCard(id) { location.hash = `#card=${encodeURIComponent(id)}`; }
+    function showListView() {
+      listViewEl.style.display = "block";
+      studyViewEl.style.display = "none";
+    }
+    function showStudyView() {
+      listViewEl.style.display = "none";
+      studyViewEl.style.display = "block";
+    }
+
+    // ===== progress =====
     function loadProgress() {
       try {
-        const raw = localStorage.getItem(LS_KEY);
+        const raw = localStorage.getItem(LS_PROGRESS_KEY);
         progress = raw ? JSON.parse(raw) : {};
       } catch {
         progress = {};
       }
     }
     function saveProgress() {
-      localStorage.setItem(LS_KEY, JSON.stringify(progress));
+      localStorage.setItem(LS_PROGRESS_KEY, JSON.stringify(progress));
     }
 
+    // introducedOn:
+    // - null/undefined: 未導入（New/日で解放されるまで出題しない）
+    // - "YYYY-MM-DD": 導入済み
     function ensureStateForCard(id) {
       if (!progress[id]) {
+        // 新規：未導入
         progress[id] = {
           ease: 2.5,
           reps: 0,
           intervalDays: 0,
           lapses: 0,
           dueDate: todayKey(),
-          lastReviewedAt: null
+          lastReviewedAt: null,
+          introducedOn: null
         };
+        return;
       }
+
+      // 既存データ移行（古い版で introducedOn が無かった人向け）
+      if (progress[id].introducedOn === undefined) {
+        // すでに学習しているものは「導入済み扱い」にして、急にロックされないようにする
+        progress[id].introducedOn = "2000-01-01";
+      }
+      if (!progress[id].dueDate) progress[id].dueDate = todayKey();
+      if (progress[id].ease == null) progress[id].ease = 2.5;
+      if (progress[id].reps == null) progress[id].reps = 0;
+      if (progress[id].intervalDays == null) progress[id].intervalDays = 0;
+      if (progress[id].lapses == null) progress[id].lapses = 0;
+      if (progress[id].lastReviewedAt === undefined) progress[id].lastReviewedAt = null;
+    }
+
+    function isLocked(card) {
+      const st = progress[card.id];
+      return !st || !st.introducedOn;
     }
 
     function getFilteredCards() {
       const f = unitFilterEl.value;
-      if (f === "all") return cards;
-      const unitNum = Number(f);
-      return cards.filter(c => Number(c.unit) === unitNum);
+      const q = (searchInputEl.value || "").trim().toLowerCase();
+      const base = (f === "all") ? cards : cards.filter(c => Number(c.unit) === Number(f));
+      if (!q) return base;
+      return base.filter(c =>
+        (c.ja || "").toLowerCase().includes(q) ||
+        (c.en || "").toLowerCase().includes(q)
+      );
     }
 
-    function dueList() {
+    function countIntroducedToday(scopeCards) {
+      const t = todayKey();
+      let n = 0;
+      for (const c of scopeCards) {
+        const st = progress[c.id];
+        if (st?.introducedOn === t) n += 1;
+      }
+      return n;
+    }
+
+    function remainingNewSlots(scopeCards) {
+      const used = countIntroducedToday(scopeCards);
+      return Math.max(0, Number(settings.newPerDay) - used);
+    }
+
+    function introduceCard(card) {
+      const t = todayKey();
+      const st = progress[card.id];
+      st.introducedOn = t;
+      // 導入した日は「今日出す」
+      if (!st.dueDate || st.dueDate > t) st.dueDate = t;
+      saveProgress();
+    }
+
+    // 今日の新規枠が残っていれば、未導入から N 枚導入（unit/idx順）
+    function introduceNewCardsAuto(maxCount, scopeCards) {
+      const slots = remainingNewSlots(scopeCards);
+      const count = Math.min(slots, maxCount);
+      if (count <= 0) return 0;
+
+      const locked = scopeCards
+        .filter(c => isLocked(c))
+        .slice()
+        .sort((a,b) => (a.unit - b.unit) || (a.idx - b.idx));
+
+      let introduced = 0;
+      for (const c of locked) {
+        if (introduced >= count) break;
+        introduceCard(c);
+        introduced += 1;
+      }
+      return introduced;
+    }
+
+    function dueList(scopeCards) {
       const t = todayKey();
       const list = [];
-      for (const c of getFilteredCards()) {
+      for (const c of scopeCards) {
         const st = progress[c.id];
-        if (!st) continue;
-        if (st.dueDate <= t) list.push(c);
+        if (!st?.introducedOn) continue;      // 未導入は出題しない
+        if ((st.dueDate || "9999-99-99") <= t) list.push(c);
       }
       return list;
     }
 
-    function pickNextCard() {
-      const due = dueList();
+    function pickNextDueCard(scopeCards) {
+      const due = dueList(scopeCards);
       if (due.length === 0) return null;
-      // ランダム（Ankiっぽく“次々”進む感じ）
       return due[Math.floor(Math.random() * due.length)];
     }
 
     function renderStatus() {
-      const due = dueList().length;
-      const total = getFilteredCards().length;
-      statusEl.textContent = `Today due: ${due} / ${total}`;
+      const scope = getFilteredCards();
+      const due = dueList(scope).length;
+      const total = scope.length;
+      const locked = scope.filter(isLocked).length;
+      const rem = remainingNewSlots(scope);
+      statusEl.textContent = `Due: ${due} / ${total}  |  Locked: ${locked}  |  New残: ${rem}`;
     }
 
+    // ===== List Render =====
+    function renderList() {
+      const t = todayKey();
+      const scope = getFilteredCards().slice();
+
+      scope.sort((a, b) => {
+        const aLocked = isLocked(a) ? 1 : 0;
+        const bLocked = isLocked(b) ? 1 : 0;
+        // due（0）→ later（1）→ locked（2）
+        const aSt = progress[a.id];
+        const bSt = progress[b.id];
+        const aDue = (!aLocked && (aSt?.dueDate ?? "9999-99-99") <= t) ? 0 : 1;
+        const bDue = (!bLocked && (bSt?.dueDate ?? "9999-99-99") <= t) ? 0 : 1;
+        const aBucket = aLocked ? 2 : aDue;
+        const bBucket = bLocked ? 2 : bDue;
+        if (aBucket !== bBucket) return aBucket - bBucket;
+
+        if (a.unit !== b.unit) return a.unit - b.unit;
+        return a.idx - b.idx;
+      });
+
+      listEl.innerHTML = "";
+      if (scope.length === 0) {
+        const div = document.createElement("div");
+        div.className = "muted";
+        div.textContent = "該当するカードがありません。";
+        listEl.appendChild(div);
+        return;
+      }
+
+      for (const c of scope) {
+        const st = progress[c.id];
+        const locked = isLocked(c);
+        const isDue = !locked && (st.dueDate <= t);
+
+        const btn = document.createElement("button");
+        btn.className = "listItem";
+        btn.type = "button";
+
+        btn.onclick = () => {
+          if (locked) {
+            const rem = remainingNewSlots(getFilteredCards());
+            if (rem <= 0) {
+              alert("今日の新規枠がありません。New/日を増やすか、明日以降にしてください。");
+              return;
+            }
+            introduceCard(c);
+            renderStatus();
+            renderList();
+            goCard(c.id);
+            return;
+          }
+          goCard(c.id);
+        };
+
+        const title = document.createElement("div");
+        title.className = "title";
+        title.textContent = c.ja;
+
+        const sub = document.createElement("div");
+        sub.className = "sub";
+
+        const badge = document.createElement("span");
+        badge.className = "badge " + (locked ? "locked" : (isDue ? "due" : "later"));
+        badge.textContent = locked ? "Locked" : (isDue ? "Due" : "Later");
+
+        const meta = document.createElement("span");
+        const interval = locked ? "-" : `${st.intervalDays}d`;
+        const ease = locked ? "-" : (Number(st.ease).toFixed(2));
+        const due = locked ? "-" : st.dueDate;
+        meta.textContent = `UNIT ${String(c.unit).padStart(3,"0")} | ${c.id} | due: ${due} | int: ${interval} | ease: ${ease}`;
+
+        sub.appendChild(badge);
+        sub.appendChild(meta);
+
+        btn.appendChild(title);
+        btn.appendChild(sub);
+
+        listEl.appendChild(btn);
+      }
+    }
+
+    // ===== Study Render =====
     function renderCard(card) {
       current = card;
       revealed = false;
       answerEl.style.display = "none";
       showBtn.textContent = "答えを見る";
 
-      jaEl.textContent = card ? card.ja : "今日は復習がありません 🎉";
-      enEl.textContent = card ? card.en : "";
-      ipaEl.textContent = card ? (card.ipa || "") : "";
-
-      playBtn.disabled = !(card && card.audioUrl);
-
       if (!card) {
+        jaEl.textContent = "今日は復習がありません 🎉";
+        enEl.textContent = "";
+        ipaEl.textContent = "";
         metaEl.textContent = "";
+        playBtn.disabled = true;
         return;
       }
 
       const st = progress[card.id];
-      metaEl.textContent = `ID: ${card.id} | UNIT: ${card.unit} | due: ${st.dueDate} | interval: ${st.intervalDays}d | ease: ${st.ease.toFixed(2)}`;
+
+      jaEl.textContent = card.ja;
+      enEl.textContent = card.en;
+      ipaEl.textContent = card.ipa || "";
+      playBtn.disabled = !card.audioUrl;
+
+      const locked = !st.introducedOn;
+      metaEl.textContent =
+        `ID: ${card.id} | UNIT: ${card.unit} | due: ${locked ? "-" : st.dueDate} | interval: ${locked ? "-" : st.intervalDays + "d"} | ease: ${locked ? "-" : st.ease.toFixed(2)}` +
+        (locked ? " | (Locked: 未導入)" : "");
     }
 
     async function playCurrentAudio() {
       if (!current?.audioUrl) return;
       try {
-        // タップ直後に play()（iPhone対策）
         audio.src = current.audioUrl;
         audio.preload = "auto";
-        await audio.play();
-      } catch (e) {
+        await audio.play(); // タップ直後（iPhone対策）
+      } catch {
         alert("再生できませんでした。もう一度タップしてください。");
       }
     }
@@ -260,15 +539,29 @@
 
     function grade(quality) {
       if (!current) return;
-      const id = current.id;
-      progress[id] = sm2Update(progress[id], quality);
+
+      const scope = getFilteredCards();
+      const st = progress[current.id];
+
+      if (!st.introducedOn) {
+        alert("このカードは未導入です。一覧から導入して開いてください。");
+        return;
+      }
+
+      progress[current.id] = sm2Update(st, quality);
       saveProgress();
+
       renderStatus();
-      renderCard(pickNextCard());
+
+      const next = pickNextDueCard(scope);
+      if (next) {
+        renderCard(next);
+      } else {
+        goList();
+      }
     }
 
     function buildUnitFilter() {
-      // 既存オプションを初期化（All以外）
       const keepFirst = unitFilterEl.querySelector('option[value="all"]');
       unitFilterEl.innerHTML = "";
       unitFilterEl.appendChild(keepFirst);
@@ -282,6 +575,21 @@
       }
     }
 
+    function renderByHash() {
+      const h = location.hash || "#list";
+      renderStatus();
+
+      if (h.startsWith("#card=")) {
+        const id = decodeURIComponent(h.slice(6));
+        const card = cards.find(c => c.id === id);
+        showStudyView();
+        renderCard(card || null);
+      } else {
+        showListView();
+        renderList();
+      }
+    }
+
     async function loadCsv() {
       statusEl.textContent = "loading CSV…";
 
@@ -290,8 +598,6 @@
       const text = await res.text();
 
       const parsed = Papa.parse(text, { header: true, skipEmptyLines: true });
-      if (parsed.errors?.length) console.warn(parsed.errors);
-
       cards = (parsed.data || []).map(r => ({
         unit: Number(r.unit),
         idx: Number(r.idx),
@@ -303,27 +609,124 @@
         id: (r.id ?? "").trim(),
       })).filter(c => c.id && c.ja && c.en);
 
-      // stateを補完
+      // state補完
       for (const c of cards) ensureStateForCard(c.id);
       saveProgress();
 
       buildUnitFilter();
-      renderStatus();
-      renderCard(pickNextCard());
+
+      // 今日の新規を自動で解放（現在のフィルタ範囲で）
+      introduceNewCardsAuto(9999, getFilteredCards());
+
+      renderByHash();
     }
 
+    // ===== スワイプ（Study view）=====
+    // 左: Again / 右: Good（答え表示後に有効）
+    (function initSwipe() {
+      const shell = document.getElementById("cardShell");
+      let sx = 0, sy = 0, st = 0;
+
+      shell.addEventListener("touchstart", (e) => {
+        if (studyViewEl.style.display === "none") return;
+        const t = e.touches[0];
+        sx = t.clientX; sy = t.clientY;
+        st = Date.now();
+      }, { passive: true });
+
+      shell.addEventListener("touchend", (e) => {
+        if (studyViewEl.style.display === "none") return;
+        const dt = Date.now() - st;
+        if (dt > 900) return;
+
+        const t = e.changedTouches[0];
+        const dx = t.clientX - sx;
+        const dy = t.clientY - sy;
+
+        if (Math.abs(dx) < 70) return;
+        if (Math.abs(dx) < Math.abs(dy) * 1.3) return;
+
+        // まず答えを表示（未表示なら）
+        if (!revealed) {
+          reveal();
+          showToast("答えを表示");
+          return;
+        }
+
+        if (dx > 0) {
+          showToast("Good");
+          grade(4);
+        } else {
+          showToast("Again");
+          grade(1);
+        }
+      }, { passive: true });
+    })();
+
     // ===== イベント =====
+    window.addEventListener("hashchange", renderByHash);
+
+    // 設定UI
+    newPerDayInputEl.value = settings.newPerDay;
+    newPerDayInputEl.addEventListener("change", () => {
+      const v = Number(newPerDayInputEl.value);
+      settings.newPerDay = Number.isFinite(v) ? Math.max(0, Math.min(200, v)) : defaultSettings.newPerDay;
+      newPerDayInputEl.value = settings.newPerDay;
+      saveSettings(settings);
+      // 変更したらその分だけ新規を埋める
+      introduceNewCardsAuto(9999, getFilteredCards());
+      renderByHash();
+      showToast(`New/日 = ${settings.newPerDay}`);
+    });
+
+    goListBtn.addEventListener("click", goList);
+
+    goDueBtn.addEventListener("click", () => {
+      const scope = getFilteredCards();
+
+      // 期限が無ければ、新規を1枚導入して飛べるようにする（枠があれば）
+      let next = pickNextDueCard(scope);
+      if (!next) {
+        const added = introduceNewCardsAuto(1, scope);
+        if (added > 0) next = pickNextDueCard(scope);
+      }
+      if (!next) {
+        alert("今日は期限のカードがありません（新規枠もありません）");
+        return;
+      }
+      goCard(next.id);
+    });
+
+    fillNewBtn.addEventListener("click", () => {
+      const added = introduceNewCardsAuto(9999, getFilteredCards());
+      renderByHash();
+      showToast(added > 0 ? `新規 ${added}枚 追加` : "新規枠なし");
+    });
+
+    backBtn.addEventListener("click", goList);
+
     playBtn.addEventListener("click", playCurrentAudio);
     showBtn.addEventListener("click", () => revealed ? hide() : reveal());
 
-    againBtn.addEventListener("click", () => grade(1)); // Again
-    hardBtn.addEventListener("click", () => grade(3));  // Hard
-    goodBtn.addEventListener("click", () => grade(4));  // Good
-    easyBtn.addEventListener("click", () => grade(5));  // Easy
+    againBtn.addEventListener("click", () => grade(1));
+    hardBtn.addEventListener("click", () => grade(3));
+    goodBtn.addEventListener("click", () => grade(4));
+    easyBtn.addEventListener("click", () => grade(5));
 
     unitFilterEl.addEventListener("change", () => {
+      // フィルタ変更後、その範囲で新規を埋める
+      introduceNewCardsAuto(9999, getFilteredCards());
+      renderByHash();
+    });
+
+    searchInputEl.addEventListener("input", () => {
+      if ((location.hash || "#list") === "#list") renderList();
       renderStatus();
-      renderCard(pickNextCard());
+    });
+
+    clearSearchBtn.addEventListener("click", () => {
+      searchInputEl.value = "";
+      renderByHash();
     });
 
     reloadBtn.addEventListener("click", async () => {
@@ -333,16 +736,17 @@
 
     resetBtn.addEventListener("click", () => {
       if (!confirm("学習データ（localStorage）を消します。OK？")) return;
-      localStorage.removeItem(LS_KEY);
+      localStorage.removeItem(LS_PROGRESS_KEY);
       loadProgress();
       for (const c of cards) ensureStateForCard(c.id);
       saveProgress();
-      renderStatus();
-      renderCard(pickNextCard());
+      // リセット後は新規/日が効く状態（多くがLocked）になる
+      introduceNewCardsAuto(9999, getFilteredCards());
+      renderByHash();
     });
 
     exportBtn.addEventListener("click", () => {
-      const payload = { version: 1, exportedAt: new Date().toISOString(), progress };
+      const payload = { version: 2, exportedAt: new Date().toISOString(), progress, settings };
       downloadText("pv_srs_progress.json", JSON.stringify(payload, null, 2));
     });
 
@@ -354,12 +758,16 @@
         const obj = JSON.parse(text);
         if (!obj?.progress) throw new Error("invalid file");
         progress = obj.progress;
+        if (obj.settings) {
+          settings = { ...defaultSettings, ...obj.settings };
+          saveSettings(settings);
+          newPerDayInputEl.value = settings.newPerDay;
+        }
         saveProgress();
-        // CSVカード分は補完
         for (const c of cards) ensureStateForCard(c.id);
         saveProgress();
-        renderStatus();
-        renderCard(pickNextCard());
+        introduceNewCardsAuto(9999, getFilteredCards());
+        renderByHash();
         alert("進捗をインポートしました");
       } catch {
         alert("インポート失敗：JSON形式が正しくないか、ファイルが違います");
@@ -370,11 +778,16 @@
 
     // ===== 起動 =====
     loadProgress();
+    // settingsは先にロード済み
     loadCsv().catch(err => {
       console.error(err);
       statusEl.textContent = "CSV読み込み失敗";
-      jaEl.textContent = "cards.csv をリポジトリ直下に置いたか確認してください。";
-      metaEl.textContent = String(err);
+      showListView();
+      listEl.innerHTML = "";
+      const div = document.createElement("div");
+      div.className = "muted";
+      div.textContent = "cards.csv をリポジトリ直下に置いたか確認してください。";
+      listEl.appendChild(div);
     });
   </script>
 </body>
