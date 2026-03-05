@@ -46,9 +46,7 @@
     }
 
     /* Deck tabs */
-    .deckBarWrap{
-      margin: 0 0 14px;
-    }
+    .deckBarWrap{ margin: 0 0 14px; }
     .deckBar{
       display:flex;
       gap:8px;
@@ -128,6 +126,12 @@
       box-shadow: 0 6px 16px rgba(0,0,0,.04);
       cursor:pointer;
     }
+    .itemRow{
+      display:flex;
+      align-items:flex-start;
+      justify-content:space-between;
+      gap:10px;
+    }
     .itemTitle{
       font-size:16px;
       line-height:1.4;
@@ -151,6 +155,56 @@
     }
     .tag.preview{ background: rgba(255, 191, 0, .22); }
 
+    .learnMini{
+      flex: 0 0 auto;
+      border: 1px solid var(--line);
+      background: rgba(17,17,17,.04);
+      border-radius: 12px;
+      padding: 8px 10px;
+      font-weight: 900;
+      cursor:pointer;
+      white-space: nowrap;
+    }
+
+    .answerBox{
+      margin-top: 10px;
+      border-top: 1px solid var(--line);
+      padding-top: 10px;
+      display:none;
+    }
+    .en{
+      font-size: 15px;
+      line-height: 1.5;
+      margin: 0 0 6px;
+    }
+    .ipa{
+      font-size: 13px;
+      color: var(--muted);
+      margin: 0;
+    }
+    .answerActions{
+      display:flex;
+      gap:8px;
+      flex-wrap:wrap;
+      align-items:center;
+      margin-top: 10px;
+    }
+    .audioMini{
+      border: 0;
+      border-radius: 12px;
+      padding: 9px 10px;
+      font-weight: 900;
+      cursor:pointer;
+      background:#111;
+      color:#fff;
+      box-shadow: 0 6px 16px rgba(0,0,0,.08);
+    }
+    .audioMini:disabled{
+      opacity:.45;
+      cursor:not-allowed;
+      box-shadow:none;
+    }
+
     /* Study */
     .actions{ display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
     .meta{ font-size: 13px; color: var(--muted); margin-top: 10px; }
@@ -165,8 +219,6 @@
       user-select:none;
     }
     .ja{ font-size: 22px; line-height:1.5; margin: 0; }
-    .en{ font-size: 18px; line-height:1.45; margin: 0 0 6px; }
-    .ipa{ font-size: 14px; color: var(--muted); margin: 0; }
     .tapHint{ font-size: 12px; color: var(--muted); margin-top: 10px; }
 
     .ratings{
@@ -304,7 +356,6 @@
       </div>
     </div>
 
-    <!-- Deck tabs (always visible) -->
     <div class="deckBarWrap">
       <div id="deckBar" class="deckBar"></div>
     </div>
@@ -313,11 +364,14 @@
       <!-- List View -->
       <div id="listView">
         <div class="panelHead">
-          <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
-            <input id="searchInput" type="search" placeholder="日本語 / 英語で検索" style="flex:1; min-width: 220px;">
-            <button class="btn secondary" id="clearSearchBtn">クリア</button>
+          <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center; justify-content:space-between;">
+            <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center; flex:1;">
+              <input id="searchInput" type="search" placeholder="日本語 / 英語で検索" style="flex:1; min-width: 220px;">
+              <button class="btn secondary" id="clearSearchBtn">クリア</button>
+            </div>
+            <button class="btn" id="goTodayFromListBtn">今日の問題へ</button>
           </div>
-          <div class="hint">一覧は制限なしで閲覧できます。タップで学習へ。</div>
+          <div class="hint">カードを押すと答えが開きます。展開内の「▶︎音声」でその場で再生できます。</div>
         </div>
         <div class="panelBody">
           <div class="list" id="list"></div>
@@ -368,7 +422,7 @@
     </div>
   </div>
 
-  <!-- Settings (Deckはここに置かない) -->
+  <!-- Settings -->
   <div class="overlay" id="overlay"></div>
   <div class="sheet" id="sheet">
     <div class="sheetHead">
@@ -433,14 +487,14 @@
 
   <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
   <script>
-    // ===== Anki-like params (MVP) =====
+    // ===== Anki-like params =====
     const LEARNING_STEPS_MIN = [1, 10];
     const GRADUATING_DAYS = 1;
     const EASY_GRADUATING_DAYS = 4;
 
     const CSV_URL = "./cards.csv";
-    const LS_PROGRESS_KEY = "pv_srs_anki_v3_progress";
-    const LS_SETTINGS_KEY = "pv_srs_anki_v3_settings";
+    const LS_PROGRESS_KEY = "pv_srs_anki_v5_progress";
+    const LS_SETTINGS_KEY = "pv_srs_anki_v5_settings";
 
     const defaultSettings = { newPerDay: 10, deck: "all", autoPlayOnFlip: true };
 
@@ -491,8 +545,7 @@
       return { start, end };
     }
     function deckLabel(deckNum){
-      const {start, end} = deckRange(deckNum);
-      return `Deck ${String(deckNum).padStart(2,"0")}（UNIT ${String(start).padStart(3,"0")}–${String(end).padStart(3,"0")}）`;
+      return `Deck ${String(deckNum).padStart(2,"0")}`;
     }
     function setFilterInfo() {
       const d = settings.deck === "all" ? "All" : deckLabel(Number(settings.deck));
@@ -520,7 +573,7 @@
       audio.play().catch(()=>{});
     }
 
-    // ===== SM-2 (review phase) =====
+    // ===== SM-2 (review) =====
     function sm2ReviewUpdate(state, quality){
       let ease=state.ease ?? 2.5;
       let reps=state.reps ?? 0;
@@ -627,9 +680,12 @@
     let current = null;
     let revealed = false;
 
+    const expanded = new Set();
+
     // ===== UI =====
     const statusEl = document.getElementById("status");
     const deckBarEl = document.getElementById("deckBar");
+    const goTodayFromListBtn = document.getElementById("goTodayFromListBtn");
 
     const listViewEl = document.getElementById("listView");
     const studyViewEl = document.getElementById("studyView");
@@ -714,7 +770,6 @@
         };
         return;
       }
-
       const p = progress[id];
       if (p.phase == null) p.phase = (p.introducedOn ? "review" : "new");
       if (p.stepIndex == null) p.stepIndex = 0;
@@ -787,7 +842,7 @@
       return introduced;
     }
 
-    function dueList(scopeCards){
+    function readyList(scopeCards){
       const now = Date.now();
       const list=[];
       for (const c of scopeCards){
@@ -797,16 +852,15 @@
       }
       return list;
     }
-    function pickNextDueCard(scopeCards){
-      const due=dueList(scopeCards);
+    function pickNextReadyCard(scopeCards){
+      const due=readyList(scopeCards);
       if (due.length===0) return null;
       return due[Math.floor(Math.random()*due.length)];
     }
 
-    // UI上は「Due」と言わない（でも内部でready枚数として使う）
     function renderStatus(){
       const scope=getFilteredCards();
-      const ready = dueList(scope).length;
+      const ready = readyList(scope).length;
       const newLeft = remainingNewSlots(scope);
       statusEl.textContent = `Ready ${ready} • New残 ${newLeft}`;
       setFilterInfo();
@@ -824,14 +878,8 @@
           settings.deck = value;
           saveSettings(settings);
 
-          // カード表示中にデッキを変えると混乱しやすいので、#cardなら#todayへ戻す
-          if ((location.hash || "#today").startsWith("#card=")) {
-            location.hash = "#today";
-          } else {
-            renderByHash();
-          }
+          expanded.clear();
 
-          // デッキ変更後も学習が始められるように新規導入（必要分）
           introduceNewCardsAuto(9999, getFilteredCards());
 
           renderDeckTabs(deckCount);
@@ -861,10 +909,15 @@
       for (const c of scope){
         const introduced = !!progress[c.id]?.introducedOn;
 
-        const btn=document.createElement("button");
-        btn.className="item";
-        btn.type="button";
-        btn.onclick=()=>goCard(c.id);
+        const item=document.createElement("div");
+        item.className = "item";
+        item.tabIndex = 0;
+
+        const row=document.createElement("div");
+        row.className="itemRow";
+
+        const left=document.createElement("div");
+        left.style.flex = "1";
 
         const title=document.createElement("div");
         title.className="itemTitle";
@@ -884,9 +937,62 @@
           sub.appendChild(tag);
         }
 
-        btn.appendChild(title);
-        btn.appendChild(sub);
-        listEl.appendChild(btn);
+        left.appendChild(title);
+        left.appendChild(sub);
+
+        const learnBtn=document.createElement("button");
+        learnBtn.className="learnMini";
+        learnBtn.textContent="学習へ";
+        learnBtn.onclick = (e) => {
+          e.stopPropagation();
+          goCard(c.id);
+        };
+
+        row.appendChild(left);
+        row.appendChild(learnBtn);
+
+        const ans=document.createElement("div");
+        ans.className="answerBox";
+
+        const en=document.createElement("p");
+        en.className="en";
+        en.textContent=c.en;
+
+        const ipa=document.createElement("p");
+        ipa.className="ipa";
+        ipa.textContent=c.ipa || "";
+
+        const actions=document.createElement("div");
+        actions.className="answerActions";
+
+        const audioBtn=document.createElement("button");
+        audioBtn.className="audioMini";
+        audioBtn.textContent="▶︎ 音声";
+        audioBtn.disabled = !c.audioUrl;
+        audioBtn.onclick = (e) => {
+          e.stopPropagation();
+          if (c.audioUrl) safePlayFromUrl(c.audioUrl);
+        };
+
+        actions.appendChild(audioBtn);
+
+        ans.appendChild(en);
+        ans.appendChild(ipa);
+        ans.appendChild(actions);
+
+        item.onclick = () => {
+          const isOpen = expanded.has(c.id);
+          if (isOpen) expanded.delete(c.id);
+          else expanded.add(c.id);
+          ans.style.display = expanded.has(c.id) ? "block" : "none";
+        };
+
+        ans.style.display = expanded.has(c.id) ? "block" : "none";
+
+        item.appendChild(row);
+        item.appendChild(ans);
+
+        listEl.appendChild(item);
       }
     }
 
@@ -984,7 +1090,7 @@
       renderStatus();
 
       const scope=getFilteredCards();
-      const next = pickNextDueCard(scope);
+      const next = pickNextReadyCard(scope);
       if (next){
         renderCard(next);
       } else {
@@ -1006,10 +1112,10 @@
       if (h === "#today"){
         setActiveNav("today");
         const scope=getFilteredCards();
-        let next = pickNextDueCard(scope);
+        let next = pickNextReadyCard(scope);
         if (!next){
           const added = introduceNewCardsAuto(1, scope);
-          if (added>0) next = pickNextDueCard(scope);
+          if (added>0) next = pickNextReadyCard(scope);
         }
         showStudyView();
         renderCard(next || null);
@@ -1065,18 +1171,14 @@
       for (const c of cards) ensureStateForCard(c.id);
       saveProgress();
 
-      // build deck tabs
       const maxUnit = Math.max(1, ...cards.map(c => Number(c.unit) || 1));
       const deckCount = Math.ceil(maxUnit / 5);
       renderDeckTabs(deckCount);
 
-      // settings init
       newPerDayInputEl.value = settings.newPerDay;
       autoPlayToggle.checked = !!settings.autoPlayOnFlip;
 
-      // 学習開始できるように枠ぶん導入
       introduceNewCardsAuto(9999, getFilteredCards());
-
       renderByHash();
     }
 
@@ -1088,6 +1190,7 @@
     navSettingsBtn.addEventListener("click", openSheet);
 
     backBtn.addEventListener("click", goList);
+    goTodayFromListBtn.addEventListener("click", goToday);
 
     tapCardEl.addEventListener("click", ()=>flipCard());
 
@@ -1150,7 +1253,7 @@
     });
 
     exportBtn.addEventListener("click", ()=>{
-      const payload = { version: 3, exportedAt: new Date().toISOString(), progress, settings };
+      const payload = { version: 5, exportedAt: new Date().toISOString(), progress, settings };
       downloadText("pv_srs_progress.json", JSON.stringify(payload, null, 2));
       showToast("Export完了");
     });
@@ -1173,8 +1276,8 @@
         for (const c of cards) ensureStateForCard(c.id);
         saveProgress();
         introduceNewCardsAuto(9999, getFilteredCards());
+        expanded.clear();
 
-        // rebuild tabs active state
         const maxUnit = Math.max(1, ...cards.map(c => Number(c.unit) || 1));
         const deckCount = Math.ceil(maxUnit / 5);
         renderDeckTabs(deckCount);
@@ -1195,6 +1298,7 @@
       for (const c of cards) ensureStateForCard(c.id);
       saveProgress();
       introduceNewCardsAuto(9999, getFilteredCards());
+      expanded.clear();
       renderByHash();
       showToast("リセットしました");
     });
