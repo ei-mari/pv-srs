@@ -1,0 +1,443 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Audio Runner | Phrasal Verb Challenge</title>
+  <style>
+    :root{
+      --bg:#f5f6f8; --card:#fff; --text:#111; --muted:rgba(17,17,17,.62);
+      --line:rgba(17,17,17,.08); --shadow:0 10px 30px rgba(0,0,0,.06);
+      --radius:16px;
+    }
+    body{ margin:0; background:var(--bg); color:var(--text);
+      font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Hiragino Sans","Noto Sans JP",sans-serif;}
+    .wrap{ max-width:760px; margin:0 auto; padding:16px; }
+    .title{ font-size:22px; font-weight:900; margin:6px 0 10px; }
+    .pill{ font-size:12px; background:rgba(17,17,17,.06); padding:7px 10px; border-radius:999px; color:var(--muted); }
+    .row{ display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin:10px 0 14px; }
+    .btn{ border:0; padding:10px 12px; border-radius:12px; background:#111; color:#fff; font-weight:800; cursor:pointer; }
+    .btn.secondary{ background:rgba(17,17,17,.06); color:#111; }
+    .btn:disabled{ opacity:.45; cursor:not-allowed; }
+    input, select{
+      padding:10px 12px; border-radius:12px; border:1px solid var(--line); background:#fff;
+    }
+    .panel{ background:var(--card); border-radius:var(--radius); box-shadow:var(--shadow); overflow:hidden; }
+    .panelHead{ padding:14px; border-bottom:1px solid var(--line); }
+    .panelBody{ padding:14px; }
+    .deckBar{ display:flex; gap:8px; overflow:auto; -webkit-overflow-scrolling:touch; padding:4px 2px 8px; }
+    .deckTab{
+      flex:0 0 auto; border:1px solid var(--line); background:rgba(255,255,255,.9);
+      border-radius:999px; padding:10px 12px; font-weight:900; cursor:pointer; white-space:nowrap;
+    }
+    .deckTab.active{ background:#111; color:#fff; border-color:#111; }
+
+    .now{ border:1px solid var(--line); border-radius:16px; padding:14px; background:#fff; }
+    .ja{ font-size:18px; font-weight:900; line-height:1.5; margin:0 0 10px; }
+    .meta{ font-size:12px; color:var(--muted); margin:0; }
+    .hint{ font-size:12px; color:var(--muted); margin-top:10px; }
+
+    .small{ font-size:12px; color:var(--muted); }
+    .toast{
+      position:fixed; left:50%; transform:translateX(-50%); bottom:20px;
+      background:rgba(17,17,17,.92); color:#fff; padding:10px 12px; border-radius:999px;
+      font-size:13px; display:none;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="title">Audio Runner</div>
+
+    <div class="row">
+      <span class="pill" id="status">loading…</span>
+      <span class="pill" id="filterInfo">Deck: All</span>
+      <a class="btn secondary" href="./index.html">← 戻る</a>
+    </div>
+
+    <div class="panel">
+      <div class="panelHead">
+        <div class="deckBar" id="deckBar"></div>
+
+        <div class="row" style="margin-top:10px;">
+          <button class="btn" id="startBtn">▶︎ Start</button>
+          <button class="btn secondary" id="pauseBtn" disabled>Pause</button>
+          <button class="btn secondary" id="stopBtn" disabled>Stop</button>
+          <button class="btn secondary" id="prevBtn" disabled>◀︎ Prev</button>
+          <button class="btn secondary" id="nextBtn" disabled>Next ▶︎</button>
+        </div>
+
+        <div class="row" style="margin-top:6px;">
+          <label class="small">間隔(秒)
+            <input id="gapSec" type="number" min="0" max="60" step="1" style="width:90px; margin-left:6px;">
+          </label>
+
+          <label class="small">再生順
+            <select id="orderSel" style="margin-left:6px;">
+              <option value="inorder">UNIT順</option>
+              <option value="shuffle">シャッフル</option>
+            </select>
+          </label>
+
+          <label class="small">
+            <input id="loopToggle" type="checkbox" style="transform: translateY(1px); margin-right:6px;">
+            ループ
+          </label>
+        </div>
+
+        <div class="hint">
+          ※ iPhoneの制限で、最初は必ず「Start」をタップして開始します（その後は連続再生OK）。
+        </div>
+      </div>
+
+      <div class="panelBody">
+        <div class="now">
+          <p class="ja" id="nowJa">—</p>
+          <p class="meta" id="nowMeta">—</p>
+        </div>
+
+        <div class="row" style="margin-top:12px;">
+          <button class="btn secondary" id="replayBtn" disabled>↻ もう一度</button>
+          <button class="btn secondary" id="copyBtn" disabled>URLコピー</button>
+        </div>
+
+        <div class="small" id="debug" style="margin-top:10px;"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+  <script>
+    const CSV_URL = "./cards.csv";
+    const LS_KEY = "pv_audio_runner_v1_settings";
+
+    const deckBar = document.getElementById("deckBar");
+    const statusEl = document.getElementById("status");
+    const filterInfo = document.getElementById("filterInfo");
+
+    const startBtn = document.getElementById("startBtn");
+    const pauseBtn = document.getElementById("pauseBtn");
+    const stopBtn  = document.getElementById("stopBtn");
+    const prevBtn  = document.getElementById("prevBtn");
+    const nextBtn  = document.getElementById("nextBtn");
+    const replayBtn = document.getElementById("replayBtn");
+    const copyBtn = document.getElementById("copyBtn");
+
+    const gapSecEl = document.getElementById("gapSec");
+    const orderSel = document.getElementById("orderSel");
+    const loopToggle = document.getElementById("loopToggle");
+
+    const nowJa = document.getElementById("nowJa");
+    const nowMeta = document.getElementById("nowMeta");
+    const debug = document.getElementById("debug");
+
+    const toast = document.getElementById("toast");
+
+    function showToast(msg){
+      toast.textContent = msg;
+      toast.style.display = "block";
+      clearTimeout(showToast._t);
+      showToast._t = setTimeout(()=>toast.style.display="none", 900);
+    }
+
+    function saveSettings(){
+      const s = {
+        deck: settings.deck,
+        gapSec: Number(gapSecEl.value || 5),
+        order: orderSel.value,
+        loop: !!loopToggle.checked
+      };
+      localStorage.setItem(LS_KEY, JSON.stringify(s));
+    }
+
+    function loadSettings(){
+      try{
+        const raw = localStorage.getItem(LS_KEY);
+        if (!raw) return null;
+        return JSON.parse(raw);
+      } catch { return null; }
+    }
+
+    let settings = { deck: "all" };
+    const saved = loadSettings();
+    if (saved){
+      settings.deck = saved.deck ?? "all";
+    }
+
+    gapSecEl.value = saved?.gapSec ?? 5;
+    orderSel.value = saved?.order ?? "inorder";
+    loopToggle.checked = saved?.loop ?? false;
+
+    let cards = [];
+    let playlist = []; // {id, unit, idx, ja, audioUrl}
+    let idx = -1;
+
+    const audio = new Audio();
+    audio.preload = "auto";
+
+    let running = false;
+    let gapTimer = null;
+
+    function clearGap(){
+      if (gapTimer) clearTimeout(gapTimer);
+      gapTimer = null;
+    }
+
+    function deckRange(deckNum){
+      const start = (deckNum - 1) * 5 + 1;
+      const end = deckNum * 5;
+      return { start, end };
+    }
+
+    function inDeck(unitNum){
+      if (settings.deck === "all") return true;
+      const dn = Number(settings.deck);
+      const {start, end} = deckRange(dn);
+      return unitNum >= start && unitNum <= end;
+    }
+
+    function buildPlaylist(){
+      const base = cards.filter(c => c.audioUrl && inDeck(c.unit));
+      base.sort((a,b)=> (a.unit-b.unit) || (a.idx-b.idx));
+
+      let arr = base.slice();
+      if (orderSel.value === "shuffle"){
+        // Fisher–Yates
+        for (let i=arr.length-1; i>0; i--){
+          const j = Math.floor(Math.random()*(i+1));
+          [arr[i], arr[j]] = [arr[j], arr[i]];
+        }
+      }
+
+      playlist = arr;
+      statusEl.textContent = `tracks ${playlist.length}`;
+      const deckLabel = settings.deck === "all" ? "All" : `Deck ${String(Number(settings.deck)).padStart(2,"0")}`;
+      filterInfo.textContent = `Deck: ${deckLabel}`;
+    }
+
+    function renderDeckTabs(){
+      const maxUnit = Math.max(1, ...cards.map(c=>c.unit));
+      const deckCount = Math.ceil(maxUnit / 5);
+
+      deckBar.innerHTML = "";
+      const make = (label, value) => {
+        const b = document.createElement("button");
+        b.className = "deckTab" + (settings.deck===value ? " active" : "");
+        b.textContent = label;
+        b.onclick = ()=>{
+          settings.deck = value;
+          saveSettings();
+          renderDeckTabs();
+          buildPlaylist();
+          stop();
+          showToast("Deck変更");
+        };
+        deckBar.appendChild(b);
+      };
+
+      make("All", "all");
+      for (let d=1; d<=deckCount; d++){
+        make(`Deck ${String(d).padStart(2,"0")}`, String(d));
+      }
+    }
+
+    function setNow(i){
+      const t = playlist[i];
+      if (!t){
+        nowJa.textContent = "—";
+        nowMeta.textContent = "—";
+        copyBtn.disabled = true;
+        replayBtn.disabled = true;
+        return;
+      }
+      nowJa.textContent = t.ja || "(no ja)";
+      nowMeta.textContent = `UNIT ${String(t.unit).padStart(3,"0")} • ${t.id}`;
+      copyBtn.disabled = false;
+      replayBtn.disabled = false;
+    }
+
+    async function playAt(i){
+      clearGap();
+      idx = i;
+
+      if (!playlist[idx]){
+        stop();
+        return;
+      }
+
+      setNow(idx);
+
+      const t = playlist[idx];
+      debug.textContent = `Now playing: ${t.audioUrl}`;
+
+      try{
+        audio.src = t.audioUrl;
+        audio.currentTime = 0;
+        await audio.play();
+      } catch (e){
+        // iPhone / network error → skip to next after a short delay
+        showToast("再生できません（次へ）");
+        gapTimer = setTimeout(()=>next(), 800);
+      }
+    }
+
+    function scheduleNextAfterGap(){
+      clearGap();
+      const gap = Math.max(0, Number(gapSecEl.value || 5)) * 1000;
+      gapTimer = setTimeout(()=> next(), gap);
+    }
+
+    function start(){
+      if (playlist.length === 0){
+        showToast("音声が見つかりません");
+        return;
+      }
+      running = true;
+      pauseBtn.disabled = false;
+      stopBtn.disabled = false;
+      prevBtn.disabled = false;
+      nextBtn.disabled = false;
+      replayBtn.disabled = false;
+      copyBtn.disabled = false;
+
+      // start from current if valid else from 0
+      const startIndex = (idx >=0 && idx < playlist.length) ? idx : 0;
+      playAt(startIndex);
+    }
+
+    function pause(){
+      clearGap();
+      audio.pause();
+      running = false;
+      startBtn.disabled = false;
+      pauseBtn.disabled = true;
+      showToast("Pause");
+    }
+
+    function stop(){
+      clearGap();
+      audio.pause();
+      try{ audio.currentTime = 0; } catch {}
+      running = false;
+      idx = -1;
+      setNow(-1);
+      pauseBtn.disabled = true;
+      stopBtn.disabled = true;
+      prevBtn.disabled = true;
+      nextBtn.disabled = true;
+      replayBtn.disabled = true;
+      copyBtn.disabled = true;
+      showToast("Stop");
+    }
+
+    function next(){
+      clearGap();
+      if (playlist.length === 0) return;
+
+      let n = idx + 1;
+      if (n >= playlist.length){
+        if (loopToggle.checked){
+          n = 0;
+        } else {
+          stop();
+          showToast("完了");
+          return;
+        }
+      }
+      playAt(n);
+    }
+
+    function prev(){
+      clearGap();
+      if (playlist.length === 0) return;
+      const p = Math.max(0, idx - 1);
+      playAt(p);
+    }
+
+    function replay(){
+      if (idx < 0) return;
+      playAt(idx);
+    }
+
+    // events
+    audio.addEventListener("ended", ()=>{
+      if (!running && !pauseBtn.disabled) {
+        // if ended while we thought running; keep normal
+      }
+      // ended -> wait gap -> next
+      scheduleNextAfterGap();
+    });
+
+    audio.addEventListener("error", ()=>{
+      showToast("読み込みエラー（次へ）");
+      clearGap();
+      gapTimer = setTimeout(()=>next(), 800);
+    });
+
+    startBtn.addEventListener("click", ()=>{
+      saveSettings();
+      start();
+    });
+    pauseBtn.addEventListener("click", pause);
+    stopBtn.addEventListener("click", stop);
+    nextBtn.addEventListener("click", ()=>{ saveSettings(); next(); });
+    prevBtn.addEventListener("click", prev);
+    replayBtn.addEventListener("click", replay);
+
+    gapSecEl.addEventListener("change", ()=>{
+      saveSettings();
+      showToast("間隔を保存");
+    });
+    orderSel.addEventListener("change", ()=>{
+      saveSettings();
+      buildPlaylist();
+      stop();
+      showToast("再生順を更新");
+    });
+    loopToggle.addEventListener("change", ()=>{
+      saveSettings();
+      showToast(loopToggle.checked ? "ループON" : "ループOFF");
+    });
+
+    copyBtn.addEventListener("click", async ()=>{
+      const t = playlist[idx];
+      if (!t?.audioUrl) return;
+      try{
+        await navigator.clipboard.writeText(t.audioUrl);
+        showToast("コピーしました");
+      }catch{
+        showToast("コピー失敗");
+      }
+    });
+
+    // load CSV
+    async function loadCsv(){
+      statusEl.textContent="loading…";
+      const res = await fetch(CSV_URL, { cache:"no-store" });
+      if (!res.ok) throw new Error("CSV fetch failed");
+      const text = await res.text();
+
+      const parsed = Papa.parse(text, { header:true, skipEmptyLines:true });
+      cards = (parsed.data||[]).map(r=>({
+        unit:Number(r.unit),
+        idx:Number(r.idx),
+        ja:(r.ja??"").trim(),
+        audioUrl:(r.audioUrl??"").trim(),
+        id:(r.id??"").trim()
+      })).filter(c=>c.id && c.unit && c.idx);
+
+      renderDeckTabs();
+      buildPlaylist();
+      setNow(-1);
+    }
+
+    loadCsv().catch(err=>{
+      console.error(err);
+      statusEl.textContent="CSV読み込み失敗";
+      nowJa.textContent="cards.csv が見つからないか、読み込めませんでした。";
+    });
+  </script>
+</body>
+</html>
