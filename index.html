@@ -22,6 +22,8 @@
       font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Hiragino Sans","Noto Sans JP",sans-serif;
     }
     .wrap{ max-width:760px; margin:0 auto; padding:16px; }
+
+    /* Top */
     .topbar{
       display:flex; gap:10px; flex-wrap:wrap; align-items:center;
       margin: 6px 0 14px;
@@ -42,6 +44,9 @@
       font-weight:650;
       cursor:pointer;
       box-shadow: var(--shadow2);
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
     }
     .btn.secondary{
       background: rgba(17,17,17,.06);
@@ -54,8 +59,11 @@
       border-radius: 12px;
       border: 1px solid var(--line);
       background: #fff;
+      width: 100%;
+      box-sizing: border-box;
     }
 
+    /* Panel */
     .panel{
       background: var(--card);
       border-radius: var(--radius);
@@ -67,6 +75,7 @@
       border-bottom: 1px solid var(--line);
     }
     .panelBody{ padding: 14px; }
+    .hint{ font-size:12px; color: var(--muted); margin-top: 10px; }
 
     /* List */
     .list{ display:flex; flex-direction:column; gap:10px; }
@@ -102,18 +111,68 @@
       color:#111;
     }
     .tag.preview{ background: rgba(255, 191, 0, .22); }
-    .tag.newleft{ background: rgba(0, 160, 255, .14); }
 
     /* Study */
+    .actions{ display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
     .ja{ font-size: 22px; line-height:1.5; margin: 10px 0 14px; }
     .en{ font-size: 18px; line-height:1.45; margin: 12px 0 6px; }
     .ipa{ font-size: 14px; color: var(--muted); margin: 0 0 10px; }
     .meta{ font-size: 13px; color: var(--muted); margin-top: 10px; }
-    .actions{ display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
     .ratings{ display:flex; gap:10px; flex-wrap:wrap; margin-top:12px; }
     .ratings .btn{ min-width: 120px; box-shadow:none; }
-    .hint{ font-size:12px; color: var(--muted); margin-top: 10px; }
 
+    /* Bottom sheet settings */
+    .overlay{
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,.35);
+      display:none;
+      z-index: 999;
+    }
+    .sheet{
+      position: fixed;
+      left: 0; right: 0; bottom: 0;
+      background: #fff;
+      border-radius: 18px 18px 0 0;
+      box-shadow: 0 -20px 40px rgba(0,0,0,.18);
+      transform: translateY(110%);
+      transition: transform .18s ease;
+      z-index: 1000;
+      max-height: 82vh;
+      overflow: auto;
+    }
+    .sheet.open{ transform: translateY(0); }
+    .sheetHead{
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--line);
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+    }
+    .sheetTitle{
+      font-weight: 800;
+      letter-spacing:.2px;
+    }
+    .sheetBody{ padding: 14px; }
+    .secTitle{
+      font-size: 12px;
+      color: var(--muted);
+      margin: 14px 0 8px;
+      text-transform: uppercase;
+      letter-spacing:.08em;
+    }
+    .row2{ display:grid; grid-template-columns: 1fr 1fr; gap:10px; }
+    @media (max-width:520px){
+      .row2{ grid-template-columns: 1fr; }
+    }
+    .danger{
+      border: 1px solid rgba(255,0,0,.18);
+      background: rgba(255,0,0,.04);
+      padding: 10px;
+      border-radius: 14px;
+    }
+
+    /* Toast */
     .toast{
       position: fixed;
       left: 50%;
@@ -124,56 +183,32 @@
       padding: 10px 12px;
       border-radius: 999px;
       font-size: 13px;
-      z-index: 9999;
+      z-index: 1200;
       display:none;
     }
-
-    .twoCol{
-      display:flex; gap:10px; flex-wrap:wrap; align-items:center;
-    }
-    .grow{ flex:1; min-width:220px; }
   </style>
 </head>
 <body>
   <div class="wrap">
     <div class="topbar">
       <span class="pill" id="status">loading…</span>
-
-      <label class="pill" style="display:inline-flex; gap:8px; align-items:center;">
-        UNIT
-        <select id="unitFilter">
-          <option value="all">All</option>
-        </select>
-      </label>
-
-      <label class="pill" style="display:inline-flex; gap:8px; align-items:center;">
-        New/日
-        <input id="newPerDayInput" type="number" min="0" max="200" style="width:90px">
-      </label>
+      <span class="pill" id="filterInfo">UNIT: All • New/日: 10</span>
 
       <button class="btn" id="goStudyBtn">今日の学習</button>
       <button class="btn secondary" id="goListBtn">一覧</button>
-
-      <button class="btn secondary" id="reloadBtn">CSV再読み込み</button>
-      <button class="btn secondary" id="resetBtn">学習データをリセット</button>
-
-      <button class="btn secondary" id="exportBtn">進捗Export</button>
-      <label class="btn secondary" style="display:inline-flex; gap:8px; align-items:center; cursor:pointer;">
-        Import
-        <input id="importProgress" type="file" accept="application/json" style="display:none;">
-      </label>
+      <button class="btn secondary" id="settingsBtn">⚙️ 設定</button>
     </div>
 
     <div class="panel" id="panel">
       <!-- List View -->
       <div id="listView">
         <div class="panelHead">
-          <div class="twoCol">
-            <input id="searchInput" class="grow" type="search" placeholder="日本語 / 英語で検索">
+          <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
+            <input id="searchInput" type="search" placeholder="日本語 / 英語で検索" style="flex:1; min-width: 220px;">
             <button class="btn secondary" id="clearSearchBtn">クリア</button>
           </div>
-          <div class="hint" style="margin-top:10px;">
-            一覧は制限なしで閲覧できます。タップすると詳細（学習）へ。未導入は「プレビュー」で、学習に追加すると採点できます。
+          <div class="hint">
+            一覧は制限なしで閲覧できます。タップで詳細（学習）へ。未導入はプレビューです。
           </div>
         </div>
         <div class="panelBody">
@@ -216,16 +251,61 @@
     </div>
   </div>
 
+  <!-- Settings bottom sheet -->
+  <div class="overlay" id="overlay"></div>
+  <div class="sheet" id="sheet">
+    <div class="sheetHead">
+      <div class="sheetTitle">設定</div>
+      <button class="btn secondary" id="closeSheetBtn">閉じる</button>
+    </div>
+    <div class="sheetBody">
+      <div class="secTitle">Learning</div>
+      <div class="row2">
+        <div>
+          <div class="pill" style="display:inline-block;margin-bottom:8px;">New/日</div>
+          <input id="newPerDayInput" type="number" min="0" max="200">
+          <div class="hint">1日に導入する新規カード数（未導入カードにのみ効きます）</div>
+        </div>
+        <div>
+          <div class="pill" style="display:inline-block;margin-bottom:8px;">UNIT</div>
+          <select id="unitFilter">
+            <option value="all">All</option>
+          </select>
+          <div class="hint">学習・一覧・検索の対象UNIT</div>
+        </div>
+      </div>
+
+      <div class="secTitle">Data</div>
+      <div class="row2">
+        <button class="btn secondary" id="reloadBtn">CSV再読み込み</button>
+        <button class="btn secondary" id="exportBtn">進捗Export</button>
+      </div>
+
+      <div style="margin-top:10px;">
+        <label class="btn secondary" style="display:inline-flex; gap:8px; align-items:center; cursor:pointer;">
+          進捗Import
+          <input id="importProgress" type="file" accept="application/json" style="display:none;">
+        </label>
+      </div>
+
+      <div style="margin-top:14px;" class="danger">
+        <div class="secTitle" style="margin-top:0;">Danger zone</div>
+        <button class="btn secondary" id="resetBtn">学習データをリセット</button>
+        <div class="hint">localStorageの進捗が消えます（必要なら先にExportしてください）</div>
+      </div>
+    </div>
+  </div>
+
   <div class="toast" id="toast"></div>
 
   <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
   <script>
     // ===== 設定 =====
     const CSV_URL = "./cards.csv";
-    const LS_PROGRESS_KEY = "pv_srs_sm2_v3_progress";
-    const LS_SETTINGS_KEY = "pv_srs_sm2_v3_settings";
+    const LS_PROGRESS_KEY = "pv_srs_sm2_v4_progress";
+    const LS_SETTINGS_KEY = "pv_srs_sm2_v4_settings";
 
-    const defaultSettings = { newPerDay: 10 };
+    const defaultSettings = { newPerDay: 10, unit: "all" };
 
     function loadSettings() {
       try {
@@ -267,6 +347,10 @@
       clearTimeout(showToast._timer);
       showToast._timer=setTimeout(()=>t.style.display="none",850);
     }
+    function setFilterInfo() {
+      const u = settings.unit === "all" ? "All" : `UNIT ${String(Number(settings.unit)).padStart(3,"0")}`;
+      document.getElementById("filterInfo").textContent = `${u} • New/日: ${settings.newPerDay}`;
+    }
 
     // ===== SM-2 =====
     function sm2Update(state, quality){
@@ -301,8 +385,6 @@
 
     // ===== UI =====
     const statusEl = document.getElementById("status");
-    const unitFilterEl = document.getElementById("unitFilter");
-    const newPerDayInputEl = document.getElementById("newPerDayInput");
 
     const listViewEl = document.getElementById("listView");
     const studyViewEl = document.getElementById("studyView");
@@ -332,6 +414,14 @@
     const goodBtn = document.getElementById("goodBtn");
     const easyBtn = document.getElementById("easyBtn");
 
+    // settings sheet
+    const settingsBtn = document.getElementById("settingsBtn");
+    const overlayEl = document.getElementById("overlay");
+    const sheetEl = document.getElementById("sheet");
+    const closeSheetBtn = document.getElementById("closeSheetBtn");
+
+    const newPerDayInputEl = document.getElementById("newPerDayInput");
+    const unitFilterEl = document.getElementById("unitFilter");
     const reloadBtn = document.getElementById("reloadBtn");
     const resetBtn = document.getElementById("resetBtn");
     const exportBtn = document.getElementById("exportBtn");
@@ -351,7 +441,6 @@
     }
     function saveProgress(){ localStorage.setItem(LS_PROGRESS_KEY, JSON.stringify(progress)); }
 
-    // introducedOn: null = 未導入（プレビュー）
     function ensureStateForCard(id){
       if (!progress[id]){
         progress[id] = {
@@ -363,7 +452,6 @@
         return;
       }
       if (progress[id].introducedOn === undefined){
-        // 旧データ移行：すでに学習していた人は導入済みに
         progress[id].introducedOn = "2000-01-01";
       }
       if (!progress[id].dueDate) progress[id].dueDate = todayKey();
@@ -377,9 +465,9 @@
     function isIntroduced(card){ return !!progress[card.id]?.introducedOn; }
 
     function getFilteredCards(){
-      const f = unitFilterEl.value;
+      const unit = settings.unit;
       const q = (searchInputEl.value||"").trim().toLowerCase();
-      const base = (f==="all") ? cards : cards.filter(c => Number(c.unit)===Number(f));
+      const base = (unit==="all") ? cards : cards.filter(c => Number(c.unit)===Number(unit));
       if (!q) return base;
       return base.filter(c => (c.ja||"").toLowerCase().includes(q) || (c.en||"").toLowerCase().includes(q));
     }
@@ -429,7 +517,7 @@
       const list=[];
       for (const c of scopeCards){
         const st=progress[c.id];
-        if (!st?.introducedOn) continue;                 // 未導入は学習キューに入れない
+        if (!st?.introducedOn) continue;
         if ((st.dueDate||"9999-99-99") <= t) list.push(c);
       }
       return list;
@@ -445,13 +533,11 @@
       const due = dueList(scope).length;
       const newLeft = remainingNewSlots(scope);
       statusEl.textContent = `Today ${due} / New残 ${newLeft}`;
+      setFilterInfo();
     }
 
-    // ===== List Render（情報を絞る）=====
     function renderList(){
-      const scope = getFilteredCards().slice()
-        .sort((a,b)=>(a.unit-b.unit)||(a.idx-b.idx));
-
+      const scope = getFilteredCards().slice().sort((a,b)=>(a.unit-b.unit)||(a.idx-b.idx));
       listEl.innerHTML="";
       if (scope.length===0){
         const div=document.createElement("div");
@@ -460,8 +546,6 @@
         listEl.appendChild(div);
         return;
       }
-
-      const newLeft = remainingNewSlots(getFilteredCards());
 
       for (const c of scope){
         const st = progress[c.id];
@@ -481,22 +565,12 @@
 
         const unit=document.createElement("span");
         unit.textContent=`UNIT ${String(c.unit).padStart(3,"0")} • ${c.id}`;
-
         sub.appendChild(unit);
 
-        // 未導入は“プレビュー”だけ軽く見せる（主張しすぎない）
         if (!introduced){
           const tag=document.createElement("span");
           tag.className="tag preview";
           tag.textContent="プレビュー";
-          sub.appendChild(tag);
-        }
-
-        // New残を目に入る程度に（小さく）
-        if (newLeft > 0){
-          const tag=document.createElement("span");
-          tag.className="tag newleft";
-          tag.textContent=`New残 ${newLeft}`;
           sub.appendChild(tag);
         }
 
@@ -506,7 +580,6 @@
       }
     }
 
-    // ===== Study Render（必要な時だけ詳細）=====
     function setGradeEnabled(enabled){
       againBtn.disabled = !enabled;
       hardBtn.disabled = !enabled;
@@ -539,19 +612,11 @@
       ipaEl.textContent=card.ipa||"";
       playBtn.disabled=!card.audioUrl;
 
-      // ここがシンプル表示
       metaEl.textContent = `UNIT ${String(card.unit).padStart(3,"0")} • ${card.id}` + (introduced ? "" : " • プレビュー");
-
-      // 未導入なら「学習に追加」ボタンを出す
       addToLearningBtn.style.display = introduced ? "none" : "inline-flex";
-
-      // New枠が無いなら押せない
-      const scope=getFilteredCards();
-      const canAdd = remainingNewSlots(scope) > 0;
-      addToLearningBtn.disabled = !canAdd;
+      addToLearningBtn.disabled = remainingNewSlots(getFilteredCards()) <= 0;
 
       setGradeEnabled(introduced);
-      // 詳細は隠しておく
       detailsEl.textContent = introduced
         ? `due: ${st.dueDate} | interval: ${st.intervalDays}d | ease: ${Number(st.ease).toFixed(2)} | reps: ${st.reps} | lapses: ${st.lapses}`
         : `未導入のため採点できません（New枠があれば「学習に追加」できます）`;
@@ -651,10 +716,12 @@
 
       buildUnitFilter();
 
-      // 学習体験を途切れさせないため：最初の起動時だけ今日の新規を自動で埋める
-      // （一覧は制限なしなので、ここは学習用に必要な分だけ確保するイメージ）
+      // 初回起動時に学習が始められるように、必要分だけ新規導入
       introduceNewCardsAuto(9999, getFilteredCards());
 
+      // UIへ反映
+      unitFilterEl.value = settings.unit;
+      newPerDayInputEl.value = settings.newPerDay;
       renderByHash();
     }
 
@@ -687,7 +754,6 @@
           return;
         }
 
-        // 未導入は採点しない（スワイプは効かせない）
         if (!current || !progress[current.id]?.introducedOn){
           showToast("プレビュー");
           return;
@@ -698,27 +764,26 @@
       }, {passive:true});
     })();
 
+    // ===== settings sheet =====
+    function openSheet(){
+      overlayEl.style.display="block";
+      sheetEl.classList.add("open");
+      document.body.style.overflow="hidden";
+    }
+    function closeSheet(){
+      overlayEl.style.display="none";
+      sheetEl.classList.remove("open");
+      document.body.style.overflow="";
+    }
+
     // ===== events =====
     window.addEventListener("hashchange", renderByHash);
-
-    newPerDayInputEl.value = settings.newPerDay;
-    newPerDayInputEl.addEventListener("change", ()=>{
-      const v = Number(newPerDayInputEl.value);
-      settings.newPerDay = Number.isFinite(v) ? Math.max(0, Math.min(200, v)) : defaultSettings.newPerDay;
-      newPerDayInputEl.value = settings.newPerDay;
-      saveSettings(settings);
-      // 変更したら新規枠ぶんを埋める
-      introduceNewCardsAuto(9999, getFilteredCards());
-      renderByHash();
-      showToast(`New/日 = ${settings.newPerDay}`);
-    });
 
     goListBtn.addEventListener("click", goList);
     backBtn.addEventListener("click", goList);
 
     goStudyBtn.addEventListener("click", ()=>{
       const scope=getFilteredCards();
-      // 期限が無いなら新規を1枚だけ導入して学習が始まるようにする
       let next = pickNextDueCard(scope);
       if (!next){
         const added = introduceNewCardsAuto(1, scope);
@@ -740,11 +805,6 @@
       renderByHash();
     });
 
-    unitFilterEl.addEventListener("change", ()=>{
-      introduceNewCardsAuto(9999, getFilteredCards());
-      renderByHash();
-    });
-
     playBtn.addEventListener("click", playCurrentAudio);
     showBtn.addEventListener("click", ()=> revealed ? hide() : reveal());
 
@@ -752,7 +812,7 @@
       if (!current) return;
       const scope=getFilteredCards();
       if (remainingNewSlots(scope) <= 0){
-        alert("今日の新規枠がありません。New/日を増やすか、明日以降にしてください。");
+        alert("今日の新規枠がありません。設定でNew/日を増やすか、明日以降にしてください。");
         return;
       }
       introduceCard(current);
@@ -770,24 +830,43 @@
     goodBtn.addEventListener("click", ()=>grade(4));
     easyBtn.addEventListener("click", ()=>grade(5));
 
-    reloadBtn.addEventListener("click", async ()=>{
-      await loadCsv();
-      alert("CSVを再読み込みしました");
-    });
+    // settings open/close
+    settingsBtn.addEventListener("click", openSheet);
+    closeSheetBtn.addEventListener("click", closeSheet);
+    overlayEl.addEventListener("click", closeSheet);
 
-    resetBtn.addEventListener("click", ()=>{
-      if (!confirm("学習データ（localStorage）を消します。OK？")) return;
-      localStorage.removeItem(LS_PROGRESS_KEY);
-      loadProgress();
-      for (const c of cards) ensureStateForCard(c.id);
-      saveProgress();
+    // settings fields
+    newPerDayInputEl.value = settings.newPerDay;
+    unitFilterEl.value = settings.unit;
+
+    newPerDayInputEl.addEventListener("change", ()=>{
+      const v = Number(newPerDayInputEl.value);
+      settings.newPerDay = Number.isFinite(v) ? Math.max(0, Math.min(200, v)) : defaultSettings.newPerDay;
+      newPerDayInputEl.value = settings.newPerDay;
+      saveSettings(settings);
       introduceNewCardsAuto(9999, getFilteredCards());
       renderByHash();
+      showToast(`New/日 = ${settings.newPerDay}`);
+    });
+
+    unitFilterEl.addEventListener("change", ()=>{
+      settings.unit = unitFilterEl.value;
+      saveSettings(settings);
+      introduceNewCardsAuto(9999, getFilteredCards());
+      renderByHash();
+      showToast(`UNIT変更`);
+    });
+
+    // data actions
+    reloadBtn.addEventListener("click", async ()=>{
+      await loadCsv();
+      showToast("CSV再読み込み");
     });
 
     exportBtn.addEventListener("click", ()=>{
-      const payload = { version: 3, exportedAt: new Date().toISOString(), progress, settings };
+      const payload = { version: 4, exportedAt: new Date().toISOString(), progress, settings };
       downloadText("pv_srs_progress.json", JSON.stringify(payload, null, 2));
+      showToast("Export完了");
     });
 
     importProgressEl.addEventListener("change", async (e)=>{
@@ -802,13 +881,14 @@
           settings = { ...defaultSettings, ...obj.settings };
           saveSettings(settings);
           newPerDayInputEl.value = settings.newPerDay;
+          unitFilterEl.value = settings.unit;
         }
         saveProgress();
         for (const c of cards) ensureStateForCard(c.id);
         saveProgress();
         introduceNewCardsAuto(9999, getFilteredCards());
         renderByHash();
-        alert("インポートしました");
+        showToast("Import完了");
       }catch{
         alert("インポート失敗：ファイルが違う可能性があります");
       }finally{
@@ -816,8 +896,20 @@
       }
     });
 
+    resetBtn.addEventListener("click", ()=>{
+      if (!confirm("学習データ（localStorage）を消します。OK？（先にExport推奨）")) return;
+      localStorage.removeItem(LS_PROGRESS_KEY);
+      loadProgress();
+      for (const c of cards) ensureStateForCard(c.id);
+      saveProgress();
+      introduceNewCardsAuto(9999, getFilteredCards());
+      renderByHash();
+      showToast("リセットしました");
+    });
+
     // ===== boot =====
     loadProgress();
+    setFilterInfo();
     loadCsv().catch(err=>{
       console.error(err);
       statusEl.textContent="CSV読み込み失敗";
