@@ -21,20 +21,36 @@
       color:var(--text);
       font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Hiragino Sans","Noto Sans JP",sans-serif;
     }
-    .wrap{ max-width:760px; margin:0 auto; padding:16px; }
+    .wrap{ max-width:760px; margin:0 auto; padding:16px; padding-bottom: 96px; } /* 下部ナビ分 */
 
-    /* Top */
     .topbar{
       display:flex; gap:10px; flex-wrap:wrap; align-items:center;
       margin: 6px 0 14px;
+      justify-content:space-between;
     }
+    .leftTop{ display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
     .pill{
       font-size:12px;
       background: rgba(17,17,17,.06);
       padding: 7px 10px;
       border-radius: 999px;
       color: var(--muted);
+      white-space: nowrap;
     }
+
+    .panel{
+      background: var(--card);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      overflow:hidden;
+    }
+    .panelHead{
+      padding: 14px 14px 10px;
+      border-bottom: 1px solid var(--line);
+    }
+    .panelBody{ padding: 14px; }
+    .hint{ font-size:12px; color: var(--muted); margin-top: 10px; }
+
     .btn{
       border:0;
       padding: 10px 12px;
@@ -54,6 +70,7 @@
       box-shadow:none;
     }
     .btn:disabled{ opacity:.45; cursor:not-allowed; box-shadow:none; }
+
     select, input[type="search"], input[type="number"], input[type="file"]{
       padding: 10px 12px;
       border-radius: 12px;
@@ -62,20 +79,6 @@
       width: 100%;
       box-sizing: border-box;
     }
-
-    /* Panel */
-    .panel{
-      background: var(--card);
-      border-radius: var(--radius);
-      box-shadow: var(--shadow);
-      overflow:hidden;
-    }
-    .panelHead{
-      padding: 14px 14px 10px;
-      border-bottom: 1px solid var(--line);
-    }
-    .panelBody{ padding: 14px; }
-    .hint{ font-size:12px; color: var(--muted); margin-top: 10px; }
 
     /* List */
     .list{ display:flex; flex-direction:column; gap:10px; }
@@ -114,14 +117,42 @@
 
     /* Study */
     .actions{ display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
-    .ja{ font-size: 22px; line-height:1.5; margin: 10px 0 14px; }
-    .en{ font-size: 18px; line-height:1.45; margin: 12px 0 6px; }
-    .ipa{ font-size: 14px; color: var(--muted); margin: 0 0 10px; }
     .meta{ font-size: 13px; color: var(--muted); margin-top: 10px; }
     .ratings{ display:flex; gap:10px; flex-wrap:wrap; margin-top:12px; }
     .ratings .btn{ min-width: 120px; box-shadow:none; }
 
-    /* Bottom sheet settings */
+    /* Card tap area */
+    .tapCard{
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 16px;
+      background: #fff;
+      box-shadow: 0 8px 18px rgba(0,0,0,.05);
+      cursor:pointer;
+      user-select:none;
+    }
+    .ja{
+      font-size: 22px;
+      line-height:1.5;
+      margin: 0;
+    }
+    .en{
+      font-size: 18px;
+      line-height:1.45;
+      margin: 0 0 6px;
+    }
+    .ipa{
+      font-size: 14px;
+      color: var(--muted);
+      margin: 0;
+    }
+    .tapHint{
+      font-size: 12px;
+      color: var(--muted);
+      margin-top: 10px;
+    }
+
+    /* Settings bottom sheet */
     .overlay{
       position: fixed; inset: 0;
       background: rgba(0,0,0,.35);
@@ -172,12 +203,44 @@
       border-radius: 14px;
     }
 
+    /* Bottom nav */
+    .bottomNav{
+      position: fixed;
+      left: 0; right: 0; bottom: 0;
+      background: rgba(255,255,255,.92);
+      backdrop-filter: saturate(180%) blur(12px);
+      border-top: 1px solid var(--line);
+      padding: 10px 12px max(10px, env(safe-area-inset-bottom));
+      z-index: 1100;
+    }
+    .navRow{
+      max-width:760px;
+      margin: 0 auto;
+      display:flex;
+      gap:10px;
+    }
+    .navBtn{
+      flex: 1;
+      border: 1px solid var(--line);
+      background: #fff;
+      border-radius: 14px;
+      padding: 12px 10px;
+      font-weight: 700;
+      cursor:pointer;
+      box-shadow: 0 6px 18px rgba(0,0,0,.06);
+    }
+    .navBtn.active{
+      background:#111;
+      color:#fff;
+      border-color:#111;
+    }
+
     /* Toast */
     .toast{
       position: fixed;
       left: 50%;
       transform: translateX(-50%);
-      bottom: 22px;
+      bottom: 92px;
       background: rgba(17,17,17,.92);
       color: #fff;
       padding: 10px 12px;
@@ -191,12 +254,10 @@
 <body>
   <div class="wrap">
     <div class="topbar">
-      <span class="pill" id="status">loading…</span>
-      <span class="pill" id="filterInfo">UNIT: All • New/日: 10</span>
-
-      <button class="btn" id="goStudyBtn">今日の学習</button>
-      <button class="btn secondary" id="goListBtn">一覧</button>
-      <button class="btn secondary" id="settingsBtn">⚙️ 設定</button>
+      <div class="leftTop">
+        <span class="pill" id="status">loading…</span>
+        <span class="pill" id="filterInfo">UNIT: All • New/日: 10</span>
+      </div>
     </div>
 
     <div class="panel" id="panel">
@@ -207,9 +268,7 @@
             <input id="searchInput" type="search" placeholder="日本語 / 英語で検索" style="flex:1; min-width: 220px;">
             <button class="btn secondary" id="clearSearchBtn">クリア</button>
           </div>
-          <div class="hint">
-            一覧は制限なしで閲覧できます。タップで詳細（学習）へ。未導入はプレビューです。
-          </div>
+          <div class="hint">一覧は制限なしで閲覧できます。タップで詳細（学習）へ。</div>
         </div>
         <div class="panelBody">
           <div class="list" id="list"></div>
@@ -222,30 +281,29 @@
           <div class="actions">
             <button class="btn secondary" id="backBtn">← 一覧</button>
             <button class="btn" id="playBtn">▶︎ 音声</button>
-            <button class="btn secondary" id="showBtn">答えを見る</button>
-
             <button class="btn secondary" id="addToLearningBtn" style="margin-left:auto;">学習に追加</button>
             <button class="btn secondary" id="toggleDetailsBtn">詳細</button>
           </div>
         </div>
-        <div class="panelBody" id="studyShell">
-          <div class="ja" id="jaText">—</div>
-
-          <div id="answer" style="display:none;">
-            <div class="en" id="enText">—</div>
-            <div class="ipa" id="ipaText"></div>
-
-            <div class="ratings">
-              <button class="btn" id="againBtn">Again</button>
-              <button class="btn secondary" id="hardBtn">Hard</button>
-              <button class="btn secondary" id="goodBtn">Good</button>
-              <button class="btn secondary" id="easyBtn">Easy</button>
+        <div class="panelBody">
+          <div id="tapCard" class="tapCard" aria-label="tap to flip card">
+            <p class="ja" id="jaText">—</p>
+            <div id="answer" style="display:none; margin-top: 14px;">
+              <p class="en" id="enText">—</p>
+              <p class="ipa" id="ipaText"></p>
             </div>
+          </div>
+
+          <div class="ratings" id="ratings" style="display:none;">
+            <button class="btn" id="againBtn">Again</button>
+            <button class="btn secondary" id="hardBtn">Hard</button>
+            <button class="btn secondary" id="goodBtn">Good</button>
+            <button class="btn secondary" id="easyBtn">Easy</button>
           </div>
 
           <div class="meta" id="meta"></div>
           <div class="meta" id="details" style="display:none;"></div>
-          <div class="hint">スワイプ：左＝Again / 右＝Good（※答え表示後＆学習に追加後に有効）</div>
+          <div class="tapHint">カードをタップすると表⇄裏が切り替わります。</div>
         </div>
       </div>
     </div>
@@ -296,14 +354,23 @@
     </div>
   </div>
 
+  <!-- Bottom nav -->
+  <div class="bottomNav">
+    <div class="navRow">
+      <button class="navBtn" id="navList">一覧</button>
+      <button class="navBtn" id="navToday">今日</button>
+      <button class="navBtn" id="navSettings">設定</button>
+    </div>
+  </div>
+
   <div class="toast" id="toast"></div>
 
   <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
   <script>
     // ===== 設定 =====
     const CSV_URL = "./cards.csv";
-    const LS_PROGRESS_KEY = "pv_srs_sm2_v4_progress";
-    const LS_SETTINGS_KEY = "pv_srs_sm2_v4_settings";
+    const LS_PROGRESS_KEY = "pv_srs_sm2_v5_progress";
+    const LS_SETTINGS_KEY = "pv_srs_sm2_v5_settings";
 
     const defaultSettings = { newPerDay: 10, unit: "all" };
 
@@ -393,19 +460,18 @@
     const searchInputEl = document.getElementById("searchInput");
     const clearSearchBtn = document.getElementById("clearSearchBtn");
 
-    const goStudyBtn = document.getElementById("goStudyBtn");
-    const goListBtn = document.getElementById("goListBtn");
     const backBtn = document.getElementById("backBtn");
 
+    const tapCardEl = document.getElementById("tapCard");
     const jaEl = document.getElementById("jaText");
     const enEl = document.getElementById("enText");
     const ipaEl = document.getElementById("ipaText");
     const answerEl = document.getElementById("answer");
+    const ratingsEl = document.getElementById("ratings");
     const metaEl = document.getElementById("meta");
     const detailsEl = document.getElementById("details");
 
     const playBtn = document.getElementById("playBtn");
-    const showBtn = document.getElementById("showBtn");
     const addToLearningBtn = document.getElementById("addToLearningBtn");
     const toggleDetailsBtn = document.getElementById("toggleDetailsBtn");
 
@@ -414,8 +480,12 @@
     const goodBtn = document.getElementById("goodBtn");
     const easyBtn = document.getElementById("easyBtn");
 
+    // bottom nav
+    const navListBtn = document.getElementById("navList");
+    const navTodayBtn = document.getElementById("navToday");
+    const navSettingsBtn = document.getElementById("navSettings");
+
     // settings sheet
-    const settingsBtn = document.getElementById("settingsBtn");
     const overlayEl = document.getElementById("overlay");
     const sheetEl = document.getElementById("sheet");
     const closeSheetBtn = document.getElementById("closeSheetBtn");
@@ -428,9 +498,17 @@
     const importProgressEl = document.getElementById("importProgress");
 
     function goList(){ location.hash="#list"; }
+    function goToday(){ location.hash="#today"; }
     function goCard(id){ location.hash=`#card=${encodeURIComponent(id)}`; }
+
     function showListView(){ listViewEl.style.display="block"; studyViewEl.style.display="none"; }
     function showStudyView(){ listViewEl.style.display="none"; studyViewEl.style.display="block"; }
+
+    function setActiveNav(tab){
+      navListBtn.classList.toggle("active", tab==="list");
+      navTodayBtn.classList.toggle("active", tab==="today");
+      navSettingsBtn.classList.toggle("active", tab==="settings");
+    }
 
     // ===== progress =====
     function loadProgress(){
@@ -591,7 +669,7 @@
       current=card;
       revealed=false;
       answerEl.style.display="none";
-      showBtn.textContent="答えを見る";
+      ratingsEl.style.display="none";
       detailsEl.style.display="none";
 
       if (!card){
@@ -617,9 +695,25 @@
       addToLearningBtn.disabled = remainingNewSlots(getFilteredCards()) <= 0;
 
       setGradeEnabled(introduced);
+
       detailsEl.textContent = introduced
         ? `due: ${st.dueDate} | interval: ${st.intervalDays}d | ease: ${Number(st.ease).toFixed(2)} | reps: ${st.reps} | lapses: ${st.lapses}`
         : `未導入のため採点できません（New枠があれば「学習に追加」できます）`;
+    }
+
+    function flipCard(){
+      if (!current) return;
+      const showing = answerEl.style.display !== "none";
+      if (showing){
+        answerEl.style.display="none";
+        ratingsEl.style.display="none";
+      } else {
+        answerEl.style.display="block";
+        // 導入済みのみ採点ボタンを表示
+        const introduced = !!progress[current.id]?.introducedOn;
+        ratingsEl.style.display = introduced ? "flex" : "none";
+      }
+      revealed = !showing;
     }
 
     async function playCurrentAudio(){
@@ -631,18 +725,6 @@
       }catch{
         alert("再生できませんでした。もう一度タップしてください。");
       }
-    }
-
-    function reveal(){
-      if (!current) return;
-      revealed=true;
-      answerEl.style.display="block";
-      showBtn.textContent="答えを隠す";
-    }
-    function hide(){
-      revealed=false;
-      answerEl.style.display="none";
-      showBtn.textContent="答えを見る";
     }
 
     function grade(quality){
@@ -661,8 +743,15 @@
       renderStatus();
 
       const next = pickNextDueCard(scope);
-      if (next) renderCard(next);
-      else goList();
+      if (next){
+        renderCard(next);
+        // 次のカードは表面から
+        answerEl.style.display="none";
+        ratingsEl.style.display="none";
+        revealed=false;
+      } else {
+        goList();
+      }
     }
 
     function buildUnitFilter(){
@@ -679,18 +768,57 @@
     }
 
     function renderByHash(){
-      const h = location.hash || "#list";
+      const h = location.hash || "#today";
       renderStatus();
 
+      if (h === "#list"){
+        setActiveNav("list");
+        showListView();
+        renderList();
+        return;
+      }
+
+      if (h === "#today"){
+        setActiveNav("today");
+        // 今日の学習：期限カードへ（なければ新規1枚導入）
+        const scope=getFilteredCards();
+        let next = pickNextDueCard(scope);
+        if (!next){
+          const added = introduceNewCardsAuto(1, scope);
+          if (added>0) next = pickNextDueCard(scope);
+        }
+        showStudyView();
+        renderCard(next || null);
+        return;
+      }
+
       if (h.startsWith("#card=")){
+        setActiveNav("today");
         const id = decodeURIComponent(h.slice(6));
         const card = cards.find(c=>c.id===id);
         showStudyView();
         renderCard(card || null);
-      } else {
-        showListView();
-        renderList();
+        return;
       }
+
+      // fallback
+      goToday();
+    }
+
+    // settings sheet
+    function openSheet(){
+      overlayEl.style.display="block";
+      sheetEl.classList.add("open");
+      document.body.style.overflow="hidden";
+      setActiveNav("settings");
+    }
+    function closeSheet(){
+      overlayEl.style.display="none";
+      sheetEl.classList.remove("open");
+      document.body.style.overflow="";
+      // 戻り先は現在のhashに合わせる
+      const h = location.hash || "#today";
+      setActiveNav(h==="#list" ? "list" : "today");
     }
 
     async function loadCsv(){
@@ -715,100 +843,38 @@
       saveProgress();
 
       buildUnitFilter();
-
-      // 初回起動時に学習が始められるように、必要分だけ新規導入
-      introduceNewCardsAuto(9999, getFilteredCards());
-
-      // UIへ反映
       unitFilterEl.value = settings.unit;
       newPerDayInputEl.value = settings.newPerDay;
+
+      // 初回起動時に今日の学習が開始できるように枠ぶん導入
+      introduceNewCardsAuto(9999, getFilteredCards());
+
       renderByHash();
-    }
-
-    // ===== swipe (study) =====
-    (function initSwipe(){
-      const shell = document.getElementById("studyShell");
-      let sx=0, sy=0, st=0;
-
-      shell.addEventListener("touchstart", (e)=>{
-        if (studyViewEl.style.display==="none") return;
-        const t=e.touches[0];
-        sx=t.clientX; sy=t.clientY; st=Date.now();
-      }, {passive:true});
-
-      shell.addEventListener("touchend", (e)=>{
-        if (studyViewEl.style.display==="none") return;
-        const dt=Date.now()-st;
-        if (dt>900) return;
-
-        const t=e.changedTouches[0];
-        const dx=t.clientX - sx;
-        const dy=t.clientY - sy;
-
-        if (Math.abs(dx)<70) return;
-        if (Math.abs(dx) < Math.abs(dy)*1.3) return;
-
-        if (!revealed){
-          reveal();
-          showToast("答えを表示");
-          return;
-        }
-
-        if (!current || !progress[current.id]?.introducedOn){
-          showToast("プレビュー");
-          return;
-        }
-
-        if (dx>0){ showToast("Good"); grade(4); }
-        else { showToast("Again"); grade(1); }
-      }, {passive:true});
-    })();
-
-    // ===== settings sheet =====
-    function openSheet(){
-      overlayEl.style.display="block";
-      sheetEl.classList.add("open");
-      document.body.style.overflow="hidden";
-    }
-    function closeSheet(){
-      overlayEl.style.display="none";
-      sheetEl.classList.remove("open");
-      document.body.style.overflow="";
     }
 
     // ===== events =====
     window.addEventListener("hashchange", renderByHash);
 
-    goListBtn.addEventListener("click", goList);
+    // bottom nav
+    navListBtn.addEventListener("click", goList);
+    navTodayBtn.addEventListener("click", goToday);
+    navSettingsBtn.addEventListener("click", openSheet);
+
     backBtn.addEventListener("click", goList);
 
-    goStudyBtn.addEventListener("click", ()=>{
-      const scope=getFilteredCards();
-      let next = pickNextDueCard(scope);
-      if (!next){
-        const added = introduceNewCardsAuto(1, scope);
-        if (added>0) next = pickNextDueCard(scope);
-      }
-      if (!next){
-        alert("今日は学習するカードがありません（New枠もありません）。");
-        return;
-      }
-      goCard(next.id);
+    // card tap flip
+    tapCardEl.addEventListener("click", (e)=>{
+      // 音声ボタンは外にあるので干渉しない想定
+      flipCard();
     });
 
-    searchInputEl.addEventListener("input", ()=>{
-      if ((location.hash||"#list")==="#list") renderList();
-      renderStatus();
-    });
-    clearSearchBtn.addEventListener("click", ()=>{
-      searchInputEl.value="";
-      renderByHash();
+    playBtn.addEventListener("click", (e)=>{
+      e.stopPropagation();
+      playCurrentAudio();
     });
 
-    playBtn.addEventListener("click", playCurrentAudio);
-    showBtn.addEventListener("click", ()=> revealed ? hide() : reveal());
-
-    addToLearningBtn.addEventListener("click", ()=>{
+    addToLearningBtn.addEventListener("click", (e)=>{
+      e.stopPropagation();
       if (!current) return;
       const scope=getFilteredCards();
       if (remainingNewSlots(scope) <= 0){
@@ -818,6 +884,10 @@
       introduceCard(current);
       renderStatus();
       renderCard(current);
+      // 裏を見ていたら採点を有効にするため表示更新
+      if (revealed){
+        ratingsEl.style.display = "flex";
+      }
       showToast("学習に追加");
     });
 
@@ -830,8 +900,17 @@
     goodBtn.addEventListener("click", ()=>grade(4));
     easyBtn.addEventListener("click", ()=>grade(5));
 
+    // list search
+    searchInputEl.addEventListener("input", ()=>{
+      if ((location.hash||"#today")==="#list") renderList();
+      renderStatus();
+    });
+    clearSearchBtn.addEventListener("click", ()=>{
+      searchInputEl.value="";
+      renderByHash();
+    });
+
     // settings open/close
-    settingsBtn.addEventListener("click", openSheet);
     closeSheetBtn.addEventListener("click", closeSheet);
     overlayEl.addEventListener("click", closeSheet);
 
@@ -864,7 +943,7 @@
     });
 
     exportBtn.addEventListener("click", ()=>{
-      const payload = { version: 4, exportedAt: new Date().toISOString(), progress, settings };
+      const payload = { version: 5, exportedAt: new Date().toISOString(), progress, settings };
       downloadText("pv_srs_progress.json", JSON.stringify(payload, null, 2));
       showToast("Export完了");
     });
@@ -910,11 +989,16 @@
     // ===== boot =====
     loadProgress();
     setFilterInfo();
+
+    // 初期表示は「今日」
+    if (!location.hash) location.hash = "#today";
+
     loadCsv().catch(err=>{
       console.error(err);
       statusEl.textContent="CSV読み込み失敗";
-      showListView();
-      listEl.innerHTML="<div style='color:rgba(17,17,17,.62)'>cards.csv をリポジトリ直下に置いたか確認してください。</div>";
+      setActiveNav("today");
+      showStudyView();
+      jaEl.textContent="cards.csv をリポジトリ直下に置いたか確認してください。";
     });
   </script>
 </body>
