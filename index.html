@@ -371,7 +371,7 @@
             </div>
             <button class="btn" id="goTodayFromListBtn">今日の問題へ</button>
           </div>
-          <div class="hint">カードを押すと答えが開きます。展開内の「▶︎音声」でその場で再生できます。</div>
+          <div class="hint">カードを押すと答えが開きます。「▶︎音声」をタップで音声が流れます。</div>
         </div>
         <div class="panelBody">
           <div class="list" id="list"></div>
@@ -478,7 +478,7 @@
   <div class="bottomNav">
     <div class="navRow">
       <button class="navBtn" id="navList">一覧</button>
-      <button class="navBtn" id="navToday">今日</button>
+      <button class="navBtn" id="navToday">暗記</button>
       <button class="navBtn" id="navSettings">設定</button>
     </div>
   </div>
@@ -879,7 +879,6 @@
           saveSettings(settings);
 
           expanded.clear();
-
           introduceNewCardsAuto(9999, getFilteredCards());
 
           renderDeckTabs(deckCount);
@@ -942,7 +941,7 @@
 
         const learnBtn=document.createElement("button");
         learnBtn.className="learnMini";
-        learnBtn.textContent="学習へ";
+        learnBtn.textContent="暗記へ";
         learnBtn.onclick = (e) => {
           e.stopPropagation();
           goCard(c.id);
