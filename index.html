@@ -1,0 +1,381 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Phrasal Verb SRS (SM-2)</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Hiragino Sans", "Noto Sans JP", sans-serif; margin: 0; background:#f6f7f9; color:#111; }
+    .wrap { max-width: 720px; margin: 0 auto; padding: 16px; }
+    .card { background:#fff; border-radius: 14px; padding: 16px; box-shadow: 0 6px 18px rgba(0,0,0,.06); }
+    .row { display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
+    button { border:0; padding: 10px 12px; border-radius: 12px; background:#111; color:#fff; font-weight:600; }
+    button.secondary { background:#e9eaee; color:#111; }
+    button:disabled { opacity:.5; }
+    .ja { font-size: 20px; line-height: 1.4; margin: 8px 0 10px; }
+    .en { font-size: 18px; line-height: 1.4; margin: 10px 0 4px; }
+    .ipa { font-size: 14px; opacity:.7; margin: 0 0 10px; }
+    .meta { font-size: 13px; opacity:.7; margin-top: 10px; }
+    select, input[type="file"] { padding: 10px; border-radius: 12px; border:1px solid #ddd; background:#fff; }
+    .topbar { display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-bottom: 12px; }
+    .pill { font-size: 12px; background:#e9eaee; padding: 6px 10px; border-radius: 999px; }
+    .ratings button { min-width: 120px; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="topbar">
+      <span class="pill" id="status">loading…</span>
+
+      <label>
+        UNIT:
+        <select id="unitFilter">
+          <option value="all">All</option>
+        </select>
+      </label>
+
+      <button class="secondary" id="reloadBtn">CSV再読み込み</button>
+      <button class="secondary" id="resetBtn">学習データをリセット</button>
+
+      <button class="secondary" id="exportBtn">進捗をエクスポート</button>
+      <label class="secondary" style="display:inline-flex; gap:8px; align-items:center; padding:10px 12px; border-radius:12px; background:#e9eaee; cursor:pointer;">
+        進捗をインポート
+        <input id="importProgress" type="file" accept="application/json" style="display:none;">
+      </label>
+    </div>
+
+    <div class="card">
+      <div class="row">
+        <button id="playBtn">▶︎ 音声</button>
+        <button class="secondary" id="showBtn">答えを見る</button>
+      </div>
+
+      <div class="ja" id="jaText">—</div>
+
+      <div id="answer" style="display:none;">
+        <div class="en" id="enText">—</div>
+        <div class="ipa" id="ipaText"></div>
+
+        <div class="row ratings" style="margin-top:12px;">
+          <button id="againBtn">Again</button>
+          <button id="hardBtn">Hard</button>
+          <button id="goodBtn">Good</button>
+          <button id="easyBtn">Easy</button>
+        </div>
+      </div>
+
+      <div class="meta" id="meta">—</div>
+    </div>
+  </div>
+
+  <!-- CSVパース用（ビルド不要） -->
+  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+
+  <script>
+    // ===== 設定 =====
+    const CSV_URL = "./cards.csv"; // リポジトリ直下に置いた cards.csv
+    const LS_KEY = "pv_srs_sm2_v1"; // 進捗保存キー
+
+    // ===== 便利関数 =====
+    function todayKey(d = new Date()) {
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, "0");
+      const day = String(d.getDate()).padStart(2, "0");
+      return `${y}-${m}-${day}`;
+    }
+    function addDaysToKey(baseKey, days) {
+      const [y, m, d] = baseKey.split("-").map(Number);
+      const dt = new Date(y, m - 1, d);
+      dt.setDate(dt.getDate() + days);
+      return todayKey(dt);
+    }
+    function clampMin(n, min) { return n < min ? min : n; }
+    function downloadText(filename, text) {
+      const blob = new Blob([text], { type: "application/json;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url; a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    }
+
+    // ===== SM-2 =====
+    // quality: 0-5（ここではボタンを 1/3/4/5 にマップ）
+    function sm2Update(state, quality) {
+      let ease = state.ease ?? 2.5;
+      let reps = state.reps ?? 0;
+      let intervalDays = state.intervalDays ?? 0;
+      let lapses = state.lapses ?? 0;
+
+      // ease更新（SM-2公式）
+      ease = ease + (0.1 - (5 - quality) * (0.08 + (5 - quality) * 0.02));
+      ease = clampMin(ease, 1.3);
+
+      if (quality < 3) {
+        // 失敗：明日また
+        reps = 0;
+        lapses += 1;
+        intervalDays = 1;
+      } else {
+        reps += 1;
+        if (reps === 1) intervalDays = 1;
+        else if (reps === 2) intervalDays = 6;
+        else intervalDays = Math.max(1, Math.round(intervalDays * ease));
+      }
+
+      const dueDate = addDaysToKey(todayKey(), intervalDays);
+      return { ...state, ease, reps, intervalDays, lapses, dueDate, lastReviewedAt: Date.now() };
+    }
+
+    // ===== データ =====
+    let cards = []; // CSVから読み込む（内容）
+    let progress = {}; // localStorage（復習状態）
+    let current = null;
+    let revealed = false;
+    const audio = new Audio();
+
+    // ===== UI要素 =====
+    const statusEl = document.getElementById("status");
+    const unitFilterEl = document.getElementById("unitFilter");
+    const jaEl = document.getElementById("jaText");
+    const enEl = document.getElementById("enText");
+    const ipaEl = document.getElementById("ipaText");
+    const metaEl = document.getElementById("meta");
+    const answerEl = document.getElementById("answer");
+    const playBtn = document.getElementById("playBtn");
+    const showBtn = document.getElementById("showBtn");
+
+    const againBtn = document.getElementById("againBtn");
+    const hardBtn = document.getElementById("hardBtn");
+    const goodBtn = document.getElementById("goodBtn");
+    const easyBtn = document.getElementById("easyBtn");
+
+    const reloadBtn = document.getElementById("reloadBtn");
+    const resetBtn = document.getElementById("resetBtn");
+    const exportBtn = document.getElementById("exportBtn");
+    const importProgressEl = document.getElementById("importProgress");
+
+    function loadProgress() {
+      try {
+        const raw = localStorage.getItem(LS_KEY);
+        progress = raw ? JSON.parse(raw) : {};
+      } catch {
+        progress = {};
+      }
+    }
+    function saveProgress() {
+      localStorage.setItem(LS_KEY, JSON.stringify(progress));
+    }
+
+    function ensureStateForCard(id) {
+      if (!progress[id]) {
+        progress[id] = {
+          ease: 2.5,
+          reps: 0,
+          intervalDays: 0,
+          lapses: 0,
+          dueDate: todayKey(),
+          lastReviewedAt: null
+        };
+      }
+    }
+
+    function getFilteredCards() {
+      const f = unitFilterEl.value;
+      if (f === "all") return cards;
+      const unitNum = Number(f);
+      return cards.filter(c => Number(c.unit) === unitNum);
+    }
+
+    function dueList() {
+      const t = todayKey();
+      const list = [];
+      for (const c of getFilteredCards()) {
+        const st = progress[c.id];
+        if (!st) continue;
+        if (st.dueDate <= t) list.push(c);
+      }
+      return list;
+    }
+
+    function pickNextCard() {
+      const due = dueList();
+      if (due.length === 0) return null;
+      // ランダム（Ankiっぽく“次々”進む感じ）
+      return due[Math.floor(Math.random() * due.length)];
+    }
+
+    function renderStatus() {
+      const due = dueList().length;
+      const total = getFilteredCards().length;
+      statusEl.textContent = `Today due: ${due} / ${total}`;
+    }
+
+    function renderCard(card) {
+      current = card;
+      revealed = false;
+      answerEl.style.display = "none";
+      showBtn.textContent = "答えを見る";
+
+      jaEl.textContent = card ? card.ja : "今日は復習がありません 🎉";
+      enEl.textContent = card ? card.en : "";
+      ipaEl.textContent = card ? (card.ipa || "") : "";
+
+      playBtn.disabled = !(card && card.audioUrl);
+
+      if (!card) {
+        metaEl.textContent = "";
+        return;
+      }
+
+      const st = progress[card.id];
+      metaEl.textContent = `ID: ${card.id} | UNIT: ${card.unit} | due: ${st.dueDate} | interval: ${st.intervalDays}d | ease: ${st.ease.toFixed(2)}`;
+    }
+
+    async function playCurrentAudio() {
+      if (!current?.audioUrl) return;
+      try {
+        // タップ直後に play()（iPhone対策）
+        audio.src = current.audioUrl;
+        audio.preload = "auto";
+        await audio.play();
+      } catch (e) {
+        alert("再生できませんでした。もう一度タップしてください。");
+      }
+    }
+
+    function reveal() {
+      if (!current) return;
+      revealed = true;
+      answerEl.style.display = "block";
+      showBtn.textContent = "答えを隠す";
+    }
+    function hide() {
+      revealed = false;
+      answerEl.style.display = "none";
+      showBtn.textContent = "答えを見る";
+    }
+
+    function grade(quality) {
+      if (!current) return;
+      const id = current.id;
+      progress[id] = sm2Update(progress[id], quality);
+      saveProgress();
+      renderStatus();
+      renderCard(pickNextCard());
+    }
+
+    function buildUnitFilter() {
+      // 既存オプションを初期化（All以外）
+      const keepFirst = unitFilterEl.querySelector('option[value="all"]');
+      unitFilterEl.innerHTML = "";
+      unitFilterEl.appendChild(keepFirst);
+
+      const units = Array.from(new Set(cards.map(c => Number(c.unit)))).sort((a,b)=>a-b);
+      for (const u of units) {
+        const opt = document.createElement("option");
+        opt.value = String(u);
+        opt.textContent = `UNIT ${String(u).padStart(3,"0")}`;
+        unitFilterEl.appendChild(opt);
+      }
+    }
+
+    async function loadCsv() {
+      statusEl.textContent = "loading CSV…";
+
+      const res = await fetch(CSV_URL, { cache: "no-store" });
+      if (!res.ok) throw new Error(`CSV fetch failed: ${res.status}`);
+      const text = await res.text();
+
+      const parsed = Papa.parse(text, { header: true, skipEmptyLines: true });
+      if (parsed.errors?.length) console.warn(parsed.errors);
+
+      cards = (parsed.data || []).map(r => ({
+        unit: Number(r.unit),
+        idx: Number(r.idx),
+        theme: (r.theme ?? "").trim(),
+        ja: (r.ja ?? "").trim(),
+        en: (r.en ?? "").trim(),
+        ipa: (r.ipa ?? "").trim(),
+        audioUrl: (r.audioUrl ?? "").trim(),
+        id: (r.id ?? "").trim(),
+      })).filter(c => c.id && c.ja && c.en);
+
+      // stateを補完
+      for (const c of cards) ensureStateForCard(c.id);
+      saveProgress();
+
+      buildUnitFilter();
+      renderStatus();
+      renderCard(pickNextCard());
+    }
+
+    // ===== イベント =====
+    playBtn.addEventListener("click", playCurrentAudio);
+    showBtn.addEventListener("click", () => revealed ? hide() : reveal());
+
+    againBtn.addEventListener("click", () => grade(1)); // Again
+    hardBtn.addEventListener("click", () => grade(3));  // Hard
+    goodBtn.addEventListener("click", () => grade(4));  // Good
+    easyBtn.addEventListener("click", () => grade(5));  // Easy
+
+    unitFilterEl.addEventListener("change", () => {
+      renderStatus();
+      renderCard(pickNextCard());
+    });
+
+    reloadBtn.addEventListener("click", async () => {
+      await loadCsv();
+      alert("CSVを再読み込みしました");
+    });
+
+    resetBtn.addEventListener("click", () => {
+      if (!confirm("学習データ（localStorage）を消します。OK？")) return;
+      localStorage.removeItem(LS_KEY);
+      loadProgress();
+      for (const c of cards) ensureStateForCard(c.id);
+      saveProgress();
+      renderStatus();
+      renderCard(pickNextCard());
+    });
+
+    exportBtn.addEventListener("click", () => {
+      const payload = { version: 1, exportedAt: new Date().toISOString(), progress };
+      downloadText("pv_srs_progress.json", JSON.stringify(payload, null, 2));
+    });
+
+    importProgressEl.addEventListener("change", async (e) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      const text = await file.text();
+      try {
+        const obj = JSON.parse(text);
+        if (!obj?.progress) throw new Error("invalid file");
+        progress = obj.progress;
+        saveProgress();
+        // CSVカード分は補完
+        for (const c of cards) ensureStateForCard(c.id);
+        saveProgress();
+        renderStatus();
+        renderCard(pickNextCard());
+        alert("進捗をインポートしました");
+      } catch {
+        alert("インポート失敗：JSON形式が正しくないか、ファイルが違います");
+      } finally {
+        importProgressEl.value = "";
+      }
+    });
+
+    // ===== 起動 =====
+    loadProgress();
+    loadCsv().catch(err => {
+      console.error(err);
+      statusEl.textContent = "CSV読み込み失敗";
+      jaEl.textContent = "cards.csv をリポジトリ直下に置いたか確認してください。";
+      metaEl.textContent = String(err);
+    });
+  </script>
+</body>
+</html>
