@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Phrasal Verb SRS (SM-2)</title>
+  <title>Phrasal Verb SRS (Anki-like)</title>
   <style>
     :root{
       --bg:#f5f6f8;
@@ -21,7 +21,7 @@
       color:var(--text);
       font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Hiragino Sans","Noto Sans JP",sans-serif;
     }
-    .wrap{ max-width:760px; margin:0 auto; padding:16px; padding-bottom: 96px; } /* 下部ナビ分 */
+    .wrap{ max-width:760px; margin:0 auto; padding:16px; padding-bottom: 96px; }
 
     .topbar{
       display:flex; gap:10px; flex-wrap:wrap; align-items:center;
@@ -92,34 +92,15 @@
       box-shadow: 0 6px 16px rgba(0,0,0,.04);
       cursor:pointer;
     }
-    .itemTitle{
-      font-size:16px;
-      line-height:1.4;
-      letter-spacing:.2px;
-      margin: 0 0 8px;
-    }
-    .itemSub{
-      display:flex;
-      gap:8px;
-      align-items:center;
-      flex-wrap:wrap;
-      font-size:12px;
-      color: var(--muted);
-    }
-    .tag{
-      font-size:11px;
-      padding: 4px 8px;
-      border-radius: 999px;
-      background: rgba(17,17,17,.06);
-      color:#111;
-    }
+    .itemTitle{ font-size:16px; line-height:1.4; letter-spacing:.2px; margin: 0 0 8px; }
+    .itemSub{ display:flex; gap:8px; align-items:center; flex-wrap:wrap; font-size:12px; color: var(--muted); }
+    .tag{ font-size:11px; padding: 4px 8px; border-radius: 999px; background: rgba(17,17,17,.06); color:#111; }
     .tag.preview{ background: rgba(255, 191, 0, .22); }
 
     /* Study */
     .actions{ display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
     .meta{ font-size: 13px; color: var(--muted); margin-top: 10px; }
 
-    /* Card tap area */
     .tapCard{
       border: 1px solid var(--line);
       border-radius: 16px;
@@ -129,26 +110,10 @@
       cursor:pointer;
       user-select:none;
     }
-    .ja{
-      font-size: 22px;
-      line-height:1.5;
-      margin: 0;
-    }
-    .en{
-      font-size: 18px;
-      line-height:1.45;
-      margin: 0 0 6px;
-    }
-    .ipa{
-      font-size: 14px;
-      color: var(--muted);
-      margin: 0;
-    }
-    .tapHint{
-      font-size: 12px;
-      color: var(--muted);
-      margin-top: 10px;
-    }
+    .ja{ font-size: 22px; line-height:1.5; margin: 0; }
+    .en{ font-size: 18px; line-height:1.45; margin: 0 0 6px; }
+    .ipa{ font-size: 14px; color: var(--muted); margin: 0; }
+    .tapHint{ font-size: 12px; color: var(--muted); margin-top: 10px; }
 
     /* Ratings + next timing */
     .ratings{
@@ -166,17 +131,8 @@
       padding: 10px;
       background: rgba(17,17,17,.02);
     }
-    .rateBox .btn{
-      width: 100%;
-      justify-content:center;
-      box-shadow:none;
-    }
-    .nextHint{
-      margin-top: 8px;
-      font-size: 12px;
-      color: var(--muted);
-      text-align:center;
-    }
+    .rateBox .btn{ width: 100%; justify-content:center; box-shadow:none; }
+    .nextHint{ margin-top: 8px; font-size: 12px; color: var(--muted); text-align:center; }
 
     /* Settings bottom sheet */
     .overlay{
@@ -206,10 +162,7 @@
       justify-content:space-between;
       gap:10px;
     }
-    .sheetTitle{
-      font-weight: 800;
-      letter-spacing:.2px;
-    }
+    .sheetTitle{ font-weight: 800; letter-spacing:.2px; }
     .sheetBody{ padding: 14px; }
     .secTitle{
       font-size: 12px;
@@ -219,9 +172,7 @@
       letter-spacing:.08em;
     }
     .row2{ display:grid; grid-template-columns: 1fr 1fr; gap:10px; }
-    @media (max-width:520px){
-      .row2{ grid-template-columns: 1fr; }
-    }
+    @media (max-width:520px){ .row2{ grid-template-columns: 1fr; } }
     .danger{
       border: 1px solid rgba(255,0,0,.18);
       background: rgba(255,0,0,.04);
@@ -298,7 +249,7 @@
       </div>
     </div>
 
-    <div class="panel" id="panel">
+    <div class="panel">
       <!-- List View -->
       <div id="listView">
         <div class="panelHead">
@@ -324,7 +275,7 @@
           </div>
         </div>
         <div class="panelBody">
-          <div id="tapCard" class="tapCard" aria-label="tap to flip card">
+          <div id="tapCard" class="tapCard">
             <p class="ja" id="jaText">—</p>
             <div id="answer" style="display:none; margin-top: 14px;">
               <p class="en" id="enText">—</p>
@@ -359,7 +310,7 @@
     </div>
   </div>
 
-  <!-- Settings bottom sheet -->
+  <!-- Settings -->
   <div class="overlay" id="overlay"></div>
   <div class="sheet" id="sheet">
     <div class="sheetHead">
@@ -374,6 +325,13 @@
         <div>
           <div class="checkText"><b>裏を開いた瞬間に音声を自動再生</b></div>
           <div class="checkDesc">カードをタップして裏を表示した瞬間に、音声（audioUrl）を再生します。</div>
+        </div>
+      </div>
+
+      <div class="checkRow" style="margin-bottom:10px;">
+        <div style="font-size:12px;color:var(--muted);">
+          <b>Learning steps</b>：1分 → 10分 →（卒業）<br>
+          卒業後：Review（日）に入りSM-2で間隔が伸びます。
         </div>
       </div>
 
@@ -426,10 +384,15 @@
 
   <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
   <script>
-    // ===== 設定 =====
+    // ===== Anki-like params (MVP) =====
+    const LEARNING_STEPS_MIN = [1, 10];      // 1m -> 10m
+    const GRADUATING_DAYS = 1;              // Goodで卒業したら1日後
+    const EASY_GRADUATING_DAYS = 4;         // Easy卒業は4日後
+
+    // ===== config =====
     const CSV_URL = "./cards.csv";
-    const LS_PROGRESS_KEY = "pv_srs_sm2_v6_progress";
-    const LS_SETTINGS_KEY = "pv_srs_sm2_v6_settings";
+    const LS_PROGRESS_KEY = "pv_srs_anki_v1_progress";
+    const LS_SETTINGS_KEY = "pv_srs_anki_v1_settings";
 
     const defaultSettings = { newPerDay: 10, unit: "all", autoPlayOnFlip: true };
 
@@ -443,18 +406,19 @@
     let settings = loadSettings();
 
     // ===== utils =====
+    const MIN = 60 * 1000;
+    const HOUR = 60 * MIN;
+    const DAY = 24 * HOUR;
+
     function todayKey(d = new Date()){
       const y=d.getFullYear();
       const m=String(d.getMonth()+1).padStart(2,"0");
       const day=String(d.getDate()).padStart(2,"0");
       return `${y}-${m}-${day}`;
     }
-    function addDaysToKey(baseKey, days){
-      const [y,m,d]=baseKey.split("-").map(Number);
-      const dt=new Date(y,m-1,d);
-      dt.setDate(dt.getDate()+days);
-      return todayKey(dt);
-    }
+    function addDaysTs(nowTs, days){ return nowTs + days * DAY; }
+    function addMinutesTs(nowTs, minutes){ return nowTs + minutes * MIN; }
+
     function clampMin(n,min){ return n<min?min:n; }
     function downloadText(filename, text){
       const blob=new Blob([text],{type:"application/json;charset=utf-8"});
@@ -477,25 +441,30 @@
       const u = settings.unit === "all" ? "All" : `UNIT ${String(Number(settings.unit)).padStart(3,"0")}`;
       document.getElementById("filterInfo").textContent = `${u} • New/日: ${settings.newPerDay}`;
     }
-    function formatNext(deltaDays, dueDate){
-      if (deltaDays === 0) return "今日";
-      if (deltaDays === 1) return "明日";
-      if (deltaDays <= 30) return `${deltaDays}日後`;
-      return dueDate; // 長い場合は日付
+    function formatRelative(ms, dueAt){
+      if (ms <= 0) return "今すぐ";
+      if (ms < HOUR) return `${Math.ceil(ms / MIN)}分後`;
+      if (ms < DAY) return `${Math.ceil(ms / HOUR)}時間後`;
+      const days = Math.ceil(ms / DAY);
+      if (days <= 30) return `${days}日後`;
+      // 長い場合は日付
+      const d = new Date(dueAt);
+      const y=d.getFullYear();
+      const m=String(d.getMonth()+1).padStart(2,"0");
+      const dd=String(d.getDate()).padStart(2,"0");
+      return `${y}-${m}-${dd}`;
     }
+
+    const audio = new Audio();
     function safePlayFromUrl(url){
-      try{
-        audio.pause();
-        audio.currentTime = 0;
-      } catch {}
+      try{ audio.pause(); audio.currentTime = 0; } catch {}
       audio.src = url;
       audio.preload = "auto";
-      // awaitしない（タップの同期中に呼ぶほうがiPhoneで安定）
       audio.play().catch(()=>{});
     }
 
-    // ===== SM-2 =====
-    function sm2Update(state, quality){
+    // ===== SM-2 (review phase) =====
+    function sm2ReviewUpdate(state, quality){
       let ease=state.ease ?? 2.5;
       let reps=state.reps ?? 0;
       let intervalDays=state.intervalDays ?? 0;
@@ -505,6 +474,7 @@
       ease = clampMin(ease, 1.3);
 
       if (quality < 3){
+        // ここは本来 lapse → relearningだが、review側の計算としては置いておく（使わない）
         reps = 0;
         lapses += 1;
         intervalDays = 1;
@@ -514,20 +484,112 @@
         else if (reps === 2) intervalDays = 6;
         else intervalDays = Math.max(1, Math.round(intervalDays * ease));
       }
-      const dueDate = addDaysToKey(todayKey(), intervalDays);
-      return { ...state, ease, reps, intervalDays, lapses, dueDate, lastReviewedAt: Date.now() };
+      return { ...state, ease, reps, intervalDays, lapses };
     }
 
-    // ===== data =====
+    // ===== Scheduler (anki-like) =====
+    // state fields we use:
+    // phase: "new" | "learning" | "review"
+    // stepIndex: number (learning)
+    // dueAt: timestamp (ms)
+    function scheduleNext(state, rating, nowTs){
+      const s = { ...state };
+
+      // ensure defaults
+      s.ease ??= 2.5;
+      s.reps ??= 0;
+      s.intervalDays ??= 0;
+      s.lapses ??= 0;
+      s.stepIndex ??= 0;
+      s.phase ??= "new";
+      s.dueAt ??= nowTs;
+
+      // helper: graduate to review with given days
+      function graduate(days){
+        s.phase = "review";
+        s.stepIndex = 0;
+        s.reps = 0;                 // 卒業直後は最初のreview扱いに近い
+        s.intervalDays = days;
+        s.dueAt = addDaysTs(nowTs, days);
+        s.lastReviewedAt = nowTs;
+        return s;
+      }
+
+      // NEW/LEARNING behavior (minutes)
+      if (s.phase === "new" || s.phase === "learning"){
+        s.phase = "learning";
+
+        if (rating === "again"){
+          s.stepIndex = 0;
+          s.dueAt = addMinutesTs(nowTs, LEARNING_STEPS_MIN[0]);
+          s.lastReviewedAt = nowTs;
+          return s;
+        }
+
+        if (rating === "hard"){
+          // 同じstepを繰り返す（Ankiっぽい）
+          const idx = Math.min(s.stepIndex, LEARNING_STEPS_MIN.length - 1);
+          s.dueAt = addMinutesTs(nowTs, LEARNING_STEPS_MIN[idx]);
+          s.lastReviewedAt = nowTs;
+          return s;
+        }
+
+        if (rating === "good"){
+          // 次のstepへ。最後なら卒業（1日後）
+          if (s.stepIndex < LEARNING_STEPS_MIN.length - 1){
+            s.stepIndex += 1;
+            s.dueAt = addMinutesTs(nowTs, LEARNING_STEPS_MIN[s.stepIndex]);
+            s.lastReviewedAt = nowTs;
+            return s;
+          }
+          return graduate(GRADUATING_DAYS);
+        }
+
+        if (rating === "easy"){
+          return graduate(EASY_GRADUATING_DAYS);
+        }
+      }
+
+      // REVIEW behavior (days) + lapse to relearning
+      if (s.phase === "review"){
+        if (rating === "again"){
+          // lapse -> relearning (1m)
+          s.lapses += 1;
+          s.phase = "learning";
+          s.stepIndex = 0;
+          // easeを少し下げる（Ankiのlapse感）
+          s.ease = Math.max(1.3, (s.ease ?? 2.5) - 0.2);
+          s.reps = 0;
+          s.intervalDays = 0;
+          s.dueAt = addMinutesTs(nowTs, LEARNING_STEPS_MIN[0]);
+          s.lastReviewedAt = nowTs;
+          return s;
+        }
+
+        const q = (rating === "hard") ? 3 : (rating === "good") ? 4 : 5;
+        const updated = sm2ReviewUpdate(s, q);
+        s.ease = updated.ease;
+        s.reps = updated.reps;
+        s.intervalDays = updated.intervalDays;
+        s.lapses = updated.lapses;
+        s.dueAt = addDaysTs(nowTs, s.intervalDays);
+        s.lastReviewedAt = nowTs;
+        return s;
+      }
+
+      // fallback
+      s.dueAt = addMinutesTs(nowTs, 10);
+      return s;
+    }
+
+    // ===== App data =====
     let cards = [];
     let progress = {};
     let current = null;
     let revealed = false;
-    const audio = new Audio();
 
     // ===== UI =====
     const statusEl = document.getElementById("status");
-
     const listViewEl = document.getElementById("listView");
     const studyViewEl = document.getElementById("studyView");
     const listEl = document.getElementById("list");
@@ -560,12 +622,10 @@
     const goodHint = document.getElementById("goodHint");
     const easyHint = document.getElementById("easyHint");
 
-    // bottom nav
     const navListBtn = document.getElementById("navList");
     const navTodayBtn = document.getElementById("navToday");
     const navSettingsBtn = document.getElementById("navSettings");
 
-    // settings sheet
     const overlayEl = document.getElementById("overlay");
     const sheetEl = document.getElementById("sheet");
     const closeSheetBtn = document.getElementById("closeSheetBtn");
@@ -591,7 +651,7 @@
       navSettingsBtn.classList.toggle("active", tab==="settings");
     }
 
-    // ===== progress =====
+    // ===== persistence =====
     function loadProgress(){
       try{
         const raw=localStorage.getItem(LS_PROGRESS_KEY);
@@ -601,28 +661,49 @@
     function saveProgress(){ localStorage.setItem(LS_PROGRESS_KEY, JSON.stringify(progress)); }
 
     function ensureStateForCard(id){
+      const now = Date.now();
+
       if (!progress[id]){
         progress[id] = {
-          ease:2.5, reps:0, intervalDays:0, lapses:0,
-          dueDate: todayKey(),
-          lastReviewedAt:null,
-          introducedOn: null
+          introducedOn: null,
+          phase: "new",
+          stepIndex: 0,
+          dueAt: now,
+          // review params
+          ease: 2.5,
+          reps: 0,
+          intervalDays: 0,
+          lapses: 0,
+          lastReviewedAt: null
         };
         return;
       }
-      if (progress[id].introducedOn === undefined){
-        progress[id].introducedOn = "2000-01-01";
+
+      // migrate older data
+      const p = progress[id];
+      if (p.phase == null) p.phase = (p.introducedOn ? "review" : "new");
+      if (p.stepIndex == null) p.stepIndex = 0;
+      if (p.dueAt == null) {
+        // fallback: if there is dueDate string, approximate at start-of-day
+        if (p.dueDate && typeof p.dueDate === "string") {
+          const [y,m,d] = p.dueDate.split("-").map(Number);
+          p.dueAt = new Date(y, m-1, d).getTime();
+        } else {
+          p.dueAt = now;
+        }
       }
-      if (!progress[id].dueDate) progress[id].dueDate = todayKey();
-      if (progress[id].ease == null) progress[id].ease = 2.5;
-      if (progress[id].reps == null) progress[id].reps = 0;
-      if (progress[id].intervalDays == null) progress[id].intervalDays = 0;
-      if (progress[id].lapses == null) progress[id].lapses = 0;
-      if (progress[id].lastReviewedAt === undefined) progress[id].lastReviewedAt = null;
+
+      p.ease ??= 2.5;
+      p.reps ??= 0;
+      p.intervalDays ??= 0;
+      p.lapses ??= 0;
+      if (p.lastReviewedAt === undefined) p.lastReviewedAt = null;
+
+      // keep introducedOn as-is (null means preview)
+      if (p.introducedOn === undefined) p.introducedOn = "2000-01-01";
     }
 
-    function isIntroduced(card){ return !!progress[card.id]?.introducedOn; }
-
+    // ===== filters =====
     function getFilteredCards(){
       const unit = settings.unit;
       const q = (searchInputEl.value||"").trim().toLowerCase();
@@ -645,10 +726,13 @@
     }
 
     function introduceCard(card){
+      const now = Date.now();
       const t=todayKey();
       const st=progress[card.id];
       st.introducedOn = t;
-      if (!st.dueDate || st.dueDate > t) st.dueDate = t;
+      st.phase = "learning";
+      st.stepIndex = 0;
+      st.dueAt = now; // 導入したらすぐ出せる
       saveProgress();
     }
 
@@ -658,7 +742,7 @@
       if (count<=0) return 0;
 
       const locked = scopeCards
-        .filter(c => !isIntroduced(c))
+        .filter(c => !progress[c.id]?.introducedOn)
         .slice()
         .sort((a,b)=>(a.unit-b.unit)||(a.idx-b.idx));
 
@@ -672,12 +756,12 @@
     }
 
     function dueList(scopeCards){
-      const t=todayKey();
+      const now = Date.now();
       const list=[];
       for (const c of scopeCards){
         const st=progress[c.id];
-        if (!st?.introducedOn) continue;
-        if ((st.dueDate||"9999-99-99") <= t) list.push(c);
+        if (!st?.introducedOn) continue;          // previewは学習キュー外
+        if ((st.dueAt ?? Infinity) <= now) list.push(c);
       }
       return list;
     }
@@ -687,14 +771,16 @@
       return due[Math.floor(Math.random()*due.length)];
     }
 
+    // ===== status =====
     function renderStatus(){
       const scope=getFilteredCards();
       const due = dueList(scope).length;
       const newLeft = remainingNewSlots(scope);
-      statusEl.textContent = `Today ${due} / New残 ${newLeft}`;
+      statusEl.textContent = `Due ${due} / New残 ${newLeft}`;
       setFilterInfo();
     }
 
+    // ===== list render =====
     function renderList(){
       const scope = getFilteredCards().slice().sort((a,b)=>(a.unit-b.unit)||(a.idx-b.idx));
       listEl.innerHTML="";
@@ -707,8 +793,7 @@
       }
 
       for (const c of scope){
-        const st = progress[c.id];
-        const introduced = !!st.introducedOn;
+        const introduced = !!progress[c.id]?.introducedOn;
 
         const btn=document.createElement("button");
         btn.className="item";
@@ -747,28 +832,26 @@
     }
 
     function updateRatingHints(){
-      // まだ裏を出してないなら、表示を薄くしておく（でも値は更新）
-      if (!current) {
+      if (!current){
         againHint.textContent = hardHint.textContent = goodHint.textContent = easyHint.textContent = "—";
         return;
       }
       const st = progress[current.id];
-      const introduced = !!st?.introducedOn;
-      if (!introduced){
+      if (!st?.introducedOn){
         againHint.textContent = hardHint.textContent = goodHint.textContent = easyHint.textContent = "学習に追加後";
         return;
       }
 
-      // 仮計算（SM-2）→ intervalDays から表示
-      const a = sm2Update({ ...st }, 1);
-      const h = sm2Update({ ...st }, 3);
-      const g = sm2Update({ ...st }, 4);
-      const e = sm2Update({ ...st }, 5);
+      const now = Date.now();
+      const a = scheduleNext({ ...st }, "again", now);
+      const h = scheduleNext({ ...st }, "hard",  now);
+      const g = scheduleNext({ ...st }, "good",  now);
+      const e = scheduleNext({ ...st }, "easy",  now);
 
-      againHint.textContent = `→ ${formatNext(a.intervalDays, a.dueDate)}`;
-      hardHint.textContent  = `→ ${formatNext(h.intervalDays, h.dueDate)}`;
-      goodHint.textContent  = `→ ${formatNext(g.intervalDays, g.dueDate)}`;
-      easyHint.textContent  = `→ ${formatNext(e.intervalDays, e.dueDate)}`;
+      againHint.textContent = `→ ${formatRelative(a.dueAt - now, a.dueAt)}`;
+      hardHint.textContent  = `→ ${formatRelative(h.dueAt - now, h.dueAt)}`;
+      goodHint.textContent  = `→ ${formatRelative(g.dueAt - now, g.dueAt)}`;
+      easyHint.textContent  = `→ ${formatRelative(e.dueAt - now, e.dueAt)}`;
     }
 
     function renderCard(card){
@@ -797,14 +880,16 @@
       ipaEl.textContent=card.ipa||"";
       playBtn.disabled=!card.audioUrl;
 
-      metaEl.textContent = `UNIT ${String(card.unit).padStart(3,"0")} • ${card.id}` + (introduced ? "" : " • プレビュー");
+      const phase = introduced ? (st.phase || "review") : "preview";
+      metaEl.textContent = `UNIT ${String(card.unit).padStart(3,"0")} • ${card.id}` + (introduced ? ` • ${phase}` : " • プレビュー");
+
       addToLearningBtn.style.display = introduced ? "none" : "inline-flex";
       addToLearningBtn.disabled = remainingNewSlots(getFilteredCards()) <= 0;
 
       setGradeEnabled(introduced);
 
       detailsEl.textContent = introduced
-        ? `due: ${st.dueDate} | interval: ${st.intervalDays}d | ease: ${Number(st.ease).toFixed(2)} | reps: ${st.reps} | lapses: ${st.lapses}`
+        ? `phase: ${st.phase} | dueAt: ${new Date(st.dueAt).toLocaleString()} | step: ${st.stepIndex} | ease: ${Number(st.ease).toFixed(2)} | reps: ${st.reps} | intDays: ${st.intervalDays} | lapses: ${st.lapses}`
         : `未導入のため採点できません（New枠があれば「学習に追加」できます）`;
 
       updateRatingHints();
@@ -825,39 +910,31 @@
         const introduced = !!progress[current.id]?.introducedOn;
         ratingsEl.style.display = introduced ? "grid" : "none";
 
-        // 裏を開いた瞬間に自動再生（設定ON + 音声あり）
         if (settings.autoPlayOnFlip && current.audioUrl) {
-          safePlayFromUrl(current.audioUrl);
+          safePlayFromUrl(current.audioUrl); // iPhone: タップ内なのでOK
         }
       }
 
       updateRatingHints();
     }
 
-    async function playCurrentAudio(){
-      if (!current?.audioUrl) return;
-      try{
-        safePlayFromUrl(current.audioUrl);
-      }catch{
-        alert("再生できませんでした。もう一度タップしてください。");
-      }
-    }
-
-    function grade(quality){
+    function grade(rating){
       if (!current) return;
-
       const st = progress[current.id];
+
       if (!st?.introducedOn){
         alert("このカードはプレビューです。「学習に追加」すると採点できます。");
         return;
       }
 
-      progress[current.id] = sm2Update(st, quality);
+      const now = Date.now();
+      progress[current.id] = scheduleNext(st, rating, now);
       saveProgress();
 
-      const scope=getFilteredCards();
       renderStatus();
 
+      // 次の期限カードへ（無ければ一覧へ）
+      const scope=getFilteredCards();
       const next = pickNextDueCard(scope);
       if (next){
         renderCard(next);
@@ -930,6 +1007,7 @@
       setActiveNav(h==="#list" ? "list" : "today");
     }
 
+    // CSV load
     async function loadCsv(){
       statusEl.textContent="loading…";
       const res = await fetch(CSV_URL, { cache:"no-store" });
@@ -956,7 +1034,7 @@
       newPerDayInputEl.value = settings.newPerDay;
       autoPlayToggle.checked = !!settings.autoPlayOnFlip;
 
-      // 初回起動時に今日の学習が開始できるように枠ぶん導入
+      // 学習開始できるように枠ぶん導入（初回）
       introduceNewCardsAuto(9999, getFilteredCards());
 
       renderByHash();
@@ -965,19 +1043,17 @@
     // ===== events =====
     window.addEventListener("hashchange", renderByHash);
 
-    // bottom nav
     navListBtn.addEventListener("click", goList);
     navTodayBtn.addEventListener("click", goToday);
     navSettingsBtn.addEventListener("click", openSheet);
 
     backBtn.addEventListener("click", goList);
 
-    // card tap flip
     tapCardEl.addEventListener("click", ()=>flipCard());
 
     playBtn.addEventListener("click", (e)=>{
       e.stopPropagation();
-      playCurrentAudio();
+      if (current?.audioUrl) safePlayFromUrl(current.audioUrl);
     });
 
     addToLearningBtn.addEventListener("click", (e)=>{
@@ -991,9 +1067,7 @@
       introduceCard(current);
       renderStatus();
       renderCard(current);
-      if (revealed){
-        ratingsEl.style.display = "grid";
-      }
+      if (revealed) ratingsEl.style.display = "grid";
       showToast("学習に追加");
     });
 
@@ -1001,10 +1075,10 @@
       detailsEl.style.display = (detailsEl.style.display==="none") ? "block" : "none";
     });
 
-    againBtn.addEventListener("click", ()=>grade(1));
-    hardBtn.addEventListener("click", ()=>grade(3));
-    goodBtn.addEventListener("click", ()=>grade(4));
-    easyBtn.addEventListener("click", ()=>grade(5));
+    againBtn.addEventListener("click", ()=>grade("again"));
+    hardBtn.addEventListener("click", ()=>grade("hard"));
+    goodBtn.addEventListener("click", ()=>grade("good"));
+    easyBtn.addEventListener("click", ()=>grade("easy"));
 
     // list search
     searchInputEl.addEventListener("input", ()=>{
@@ -1016,14 +1090,9 @@
       renderByHash();
     });
 
-    // settings open/close
+    // sheet open/close
     closeSheetBtn.addEventListener("click", closeSheet);
     overlayEl.addEventListener("click", closeSheet);
-
-    // settings fields
-    newPerDayInputEl.value = settings.newPerDay;
-    unitFilterEl.value = settings.unit;
-    autoPlayToggle.checked = !!settings.autoPlayOnFlip;
 
     autoPlayToggle.addEventListener("change", ()=>{
       settings.autoPlayOnFlip = !!autoPlayToggle.checked;
@@ -1046,17 +1115,16 @@
       saveSettings(settings);
       introduceNewCardsAuto(9999, getFilteredCards());
       renderByHash();
-      showToast(`UNIT変更`);
+      showToast("UNIT変更");
     });
 
-    // data actions
     reloadBtn.addEventListener("click", async ()=>{
       await loadCsv();
       showToast("CSV再読み込み");
     });
 
     exportBtn.addEventListener("click", ()=>{
-      const payload = { version: 6, exportedAt: new Date().toISOString(), progress, settings };
+      const payload = { version: 1, exportedAt: new Date().toISOString(), progress, settings };
       downloadText("pv_srs_progress.json", JSON.stringify(payload, null, 2));
       showToast("Export完了");
     });
@@ -1103,7 +1171,6 @@
     // ===== boot =====
     loadProgress();
     setFilterInfo();
-
     if (!location.hash) location.hash = "#today";
 
     loadCsv().catch(err=>{
