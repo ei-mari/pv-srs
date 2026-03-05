@@ -23,16 +23,16 @@
     }
     .wrap{ max-width:760px; margin:0 auto; padding:16px; padding-bottom: 96px; }
 
-    /* Header title */
     .appTitle{
       font-size: 22px;
       font-weight: 900;
       letter-spacing: .2px;
       margin: 6px 0 10px;
     }
+
     .topbar{
       display:flex; gap:10px; flex-wrap:wrap; align-items:center;
-      margin: 0 0 14px;
+      margin: 0 0 10px;
       justify-content:space-between;
     }
     .leftTop{ display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
@@ -43,6 +43,35 @@
       border-radius: 999px;
       color: var(--muted);
       white-space: nowrap;
+    }
+
+    /* Deck tabs */
+    .deckBarWrap{
+      margin: 0 0 14px;
+    }
+    .deckBar{
+      display:flex;
+      gap:8px;
+      overflow:auto;
+      -webkit-overflow-scrolling: touch;
+      padding: 4px 2px 8px;
+    }
+    .deckTab{
+      flex: 0 0 auto;
+      border: 1px solid var(--line);
+      background: rgba(255,255,255,.9);
+      border-radius: 999px;
+      padding: 10px 12px;
+      font-weight: 900;
+      cursor:pointer;
+      box-shadow: 0 6px 16px rgba(0,0,0,.05);
+      color:#111;
+      white-space: nowrap;
+    }
+    .deckTab.active{
+      background:#111;
+      color:#fff;
+      border-color:#111;
     }
 
     .panel{
@@ -140,7 +169,6 @@
     .ipa{ font-size: 14px; color: var(--muted); margin: 0; }
     .tapHint{ font-size: 12px; color: var(--muted); margin-top: 10px; }
 
-    /* Ratings */
     .ratings{
       display:grid;
       grid-template-columns: 1fr 1fr;
@@ -276,6 +304,11 @@
       </div>
     </div>
 
+    <!-- Deck tabs (always visible) -->
+    <div class="deckBarWrap">
+      <div id="deckBar" class="deckBar"></div>
+    </div>
+
     <div class="panel">
       <!-- List View -->
       <div id="listView">
@@ -335,7 +368,7 @@
     </div>
   </div>
 
-  <!-- Settings -->
+  <!-- Settings (Deckはここに置かない) -->
   <div class="overlay" id="overlay"></div>
   <div class="sheet" id="sheet">
     <div class="sheetHead">
@@ -355,16 +388,14 @@
 
       <div class="row2">
         <div>
-          <div class="pill" style="display:inline-block;margin-bottom:8px;">Deck（UNIT 5つごと）</div>
-          <select id="deckFilter">
-            <option value="all">All</option>
-          </select>
-          <div class="hint">例：Deck 01 = UNIT 001–005</div>
-        </div>
-        <div>
           <div class="pill" style="display:inline-block;margin-bottom:8px;">New/日</div>
           <input id="newPerDayInput" type="number" min="0" max="200">
           <div class="hint">1日に導入する新規カード数（未導入カードにのみ効きます）</div>
+        </div>
+        <div>
+          <div class="pill" style="display:inline-block;margin-bottom:8px;">Learning steps</div>
+          <div class="pill" style="display:inline-block;">1分 → 10分 →（卒業）</div>
+          <div class="hint">卒業後はReview（日）で間隔が伸びます。</div>
         </div>
       </div>
 
@@ -403,13 +434,13 @@
   <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
   <script>
     // ===== Anki-like params (MVP) =====
-    const LEARNING_STEPS_MIN = [1, 10];      // 1m -> 10m
-    const GRADUATING_DAYS = 1;              // Goodで卒業したら1日後
-    const EASY_GRADUATING_DAYS = 4;         // Easy卒業は4日後
+    const LEARNING_STEPS_MIN = [1, 10];
+    const GRADUATING_DAYS = 1;
+    const EASY_GRADUATING_DAYS = 4;
 
     const CSV_URL = "./cards.csv";
-    const LS_PROGRESS_KEY = "pv_srs_anki_v2_progress";
-    const LS_SETTINGS_KEY = "pv_srs_anki_v2_settings";
+    const LS_PROGRESS_KEY = "pv_srs_anki_v3_progress";
+    const LS_SETTINGS_KEY = "pv_srs_anki_v3_settings";
 
     const defaultSettings = { newPerDay: 10, deck: "all", autoPlayOnFlip: true };
 
@@ -461,7 +492,7 @@
     }
     function deckLabel(deckNum){
       const {start, end} = deckRange(deckNum);
-      return `Deck ${String(deckNum).padStart(2,"0")} (UNIT ${String(start).padStart(3,"0")}–${String(end).padStart(3,"0")})`;
+      return `Deck ${String(deckNum).padStart(2,"0")}（UNIT ${String(start).padStart(3,"0")}–${String(end).padStart(3,"0")}）`;
     }
     function setFilterInfo() {
       const d = settings.deck === "all" ? "All" : deckLabel(Number(settings.deck));
@@ -515,7 +546,6 @@
     // ===== Scheduler =====
     function scheduleNext(state, rating, nowTs){
       const s = { ...state };
-
       s.ease ??= 2.5;
       s.reps ??= 0;
       s.intervalDays ??= 0;
@@ -599,6 +629,8 @@
 
     // ===== UI =====
     const statusEl = document.getElementById("status");
+    const deckBarEl = document.getElementById("deckBar");
+
     const listViewEl = document.getElementById("listView");
     const studyViewEl = document.getElementById("studyView");
     const listEl = document.getElementById("list");
@@ -639,7 +671,6 @@
 
     const autoPlayToggle = document.getElementById("autoPlayToggle");
     const newPerDayInputEl = document.getElementById("newPerDayInput");
-    const deckFilterEl = document.getElementById("deckFilter");
     const reloadBtn = document.getElementById("reloadBtn");
     const resetBtn = document.getElementById("resetBtn");
     const exportBtn = document.getElementById("exportBtn");
@@ -658,18 +689,6 @@
       navSettingsBtn.classList.toggle("active", tab==="settings");
     }
 
-    // URL ?deck=1 で開ける（ページ分割っぽく運用できる）
-    function applyDeckFromQuery(){
-      const qs = new URLSearchParams(location.search);
-      const d = qs.get("deck");
-      if (!d) return;
-      const n = Number(d);
-      if (Number.isFinite(n) && n >= 1){
-        settings.deck = String(n);
-        saveSettings(settings);
-      }
-    }
-
     // ===== persistence =====
     function loadProgress(){
       try{
@@ -681,7 +700,6 @@
 
     function ensureStateForCard(id){
       const now = Date.now();
-
       if (!progress[id]){
         progress[id] = {
           introducedOn: null,
@@ -711,7 +729,7 @@
       if (p.introducedOn === undefined) p.introducedOn = "2000-01-01";
     }
 
-    // ===== filtering by deck =====
+    // ===== deck filtering =====
     function inDeck(unitNum){
       if (settings.deck === "all") return true;
       const deckNum = Number(settings.deck);
@@ -785,12 +803,48 @@
       return due[Math.floor(Math.random()*due.length)];
     }
 
+    // UI上は「Due」と言わない（でも内部でready枚数として使う）
     function renderStatus(){
       const scope=getFilteredCards();
-      const due = dueList(scope).length;
+      const ready = dueList(scope).length;
       const newLeft = remainingNewSlots(scope);
-      statusEl.textContent = `Due ${due} / New残 ${newLeft}`;
+      statusEl.textContent = `Ready ${ready} • New残 ${newLeft}`;
       setFilterInfo();
+    }
+
+    function renderDeckTabs(deckCount){
+      deckBarEl.innerHTML = "";
+
+      function addTab(label, value){
+        const btn = document.createElement("button");
+        btn.className = "deckTab" + ((settings.deck === value) ? " active" : "");
+        btn.type = "button";
+        btn.textContent = label;
+        btn.onclick = () => {
+          settings.deck = value;
+          saveSettings(settings);
+
+          // カード表示中にデッキを変えると混乱しやすいので、#cardなら#todayへ戻す
+          if ((location.hash || "#today").startsWith("#card=")) {
+            location.hash = "#today";
+          } else {
+            renderByHash();
+          }
+
+          // デッキ変更後も学習が始められるように新規導入（必要分）
+          introduceNewCardsAuto(9999, getFilteredCards());
+
+          renderDeckTabs(deckCount);
+          renderByHash();
+          showToast("Deck変更");
+        };
+        deckBarEl.appendChild(btn);
+      }
+
+      addTab("All", "all");
+      for (let d=1; d<=deckCount; d++){
+        addTab(`Deck ${String(d).padStart(2,"0")}`, String(d));
+      }
     }
 
     function renderList(){
@@ -911,7 +965,6 @@
           safePlayFromUrl(current.audioUrl);
         }
       }
-
       updateRatingHints();
     }
 
@@ -936,26 +989,6 @@
         renderCard(next);
       } else {
         goList();
-      }
-    }
-
-    function buildDeckFilter(){
-      // 最大UNITからデッキ数を作る
-      const maxUnit = Math.max(1, ...cards.map(c => Number(c.unit) || 1));
-      const deckCount = Math.ceil(maxUnit / 5);
-
-      // All以外を作り直す
-      deckFilterEl.innerHTML = "";
-      const allOpt = document.createElement("option");
-      allOpt.value = "all";
-      allOpt.textContent = "All";
-      deckFilterEl.appendChild(allOpt);
-
-      for (let d=1; d<=deckCount; d++){
-        const opt = document.createElement("option");
-        opt.value = String(d);
-        opt.textContent = deckLabel(d);
-        deckFilterEl.appendChild(opt);
       }
     }
 
@@ -987,19 +1020,6 @@
         setActiveNav("today");
         const id = decodeURIComponent(h.slice(6));
         const card = cards.find(c=>c.id===id);
-
-        // デッキ外のカードを直接開いた場合、該当デッキに自動で切り替える
-        if (card && settings.deck !== "all"){
-          const unit = Number(card.unit);
-          const deckNum = Math.floor((unit - 1) / 5) + 1;
-          const {start,end} = deckRange(deckNum);
-          if (unit < start || unit > end){
-            settings.deck = String(deckNum);
-            saveSettings(settings);
-            deckFilterEl.value = settings.deck;
-          }
-        }
-
         showStudyView();
         renderCard(card || null);
         return;
@@ -1023,6 +1043,7 @@
       setActiveNav(h==="#list" ? "list" : "today");
     }
 
+    // ===== boot: load CSV =====
     async function loadCsv(){
       statusEl.textContent="loading…";
       const res = await fetch(CSV_URL, { cache:"no-store" });
@@ -1044,12 +1065,18 @@
       for (const c of cards) ensureStateForCard(c.id);
       saveProgress();
 
-      buildDeckFilter();
-      deckFilterEl.value = settings.deck;
+      // build deck tabs
+      const maxUnit = Math.max(1, ...cards.map(c => Number(c.unit) || 1));
+      const deckCount = Math.ceil(maxUnit / 5);
+      renderDeckTabs(deckCount);
+
+      // settings init
       newPerDayInputEl.value = settings.newPerDay;
       autoPlayToggle.checked = !!settings.autoPlayOnFlip;
 
+      // 学習開始できるように枠ぶん導入
       introduceNewCardsAuto(9999, getFilteredCards());
+
       renderByHash();
     }
 
@@ -1107,14 +1134,6 @@
       showToast(settings.autoPlayOnFlip ? "自動再生: ON" : "自動再生: OFF");
     });
 
-    deckFilterEl.addEventListener("change", ()=>{
-      settings.deck = deckFilterEl.value;
-      saveSettings(settings);
-      introduceNewCardsAuto(9999, getFilteredCards());
-      renderByHash();
-      showToast("Deck変更");
-    });
-
     newPerDayInputEl.addEventListener("change", ()=>{
       const v = Number(newPerDayInputEl.value);
       settings.newPerDay = Number.isFinite(v) ? Math.max(0, Math.min(200, v)) : defaultSettings.newPerDay;
@@ -1131,7 +1150,7 @@
     });
 
     exportBtn.addEventListener("click", ()=>{
-      const payload = { version: 2, exportedAt: new Date().toISOString(), progress, settings };
+      const payload = { version: 3, exportedAt: new Date().toISOString(), progress, settings };
       downloadText("pv_srs_progress.json", JSON.stringify(payload, null, 2));
       showToast("Export完了");
     });
@@ -1147,7 +1166,6 @@
         if (obj.settings){
           settings = { ...defaultSettings, ...obj.settings };
           saveSettings(settings);
-          deckFilterEl.value = settings.deck;
           newPerDayInputEl.value = settings.newPerDay;
           autoPlayToggle.checked = !!settings.autoPlayOnFlip;
         }
@@ -1155,6 +1173,12 @@
         for (const c of cards) ensureStateForCard(c.id);
         saveProgress();
         introduceNewCardsAuto(9999, getFilteredCards());
+
+        // rebuild tabs active state
+        const maxUnit = Math.max(1, ...cards.map(c => Number(c.unit) || 1));
+        const deckCount = Math.ceil(maxUnit / 5);
+        renderDeckTabs(deckCount);
+
         renderByHash();
         showToast("Import完了");
       }catch{
@@ -1177,17 +1201,14 @@
 
     // ===== boot =====
     loadProgress();
-    applyDeckFromQuery();   // ?deck=1 などを反映
     setFilterInfo();
     if (!location.hash) location.hash = "#today";
-
     loadCsv().catch(err=>{
       console.error(err);
       statusEl.textContent="CSV読み込み失敗";
       setActiveNav("today");
       showStudyView();
       jaEl.textContent="cards.csv をリポジトリ直下に置いたか確認してください。";
-      updateRatingHints();
     });
   </script>
 </body>
